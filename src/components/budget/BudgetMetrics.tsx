@@ -15,15 +15,16 @@ export const BudgetMetrics = ({ budget }: BudgetMetricsProps) => {
     }).format(value);
   };
 
+  const totalRevenue = budget.monthlyData.reduce((sum, m) => sum + m.revenue, 0);
   const totalEbit = budget.monthlyData.reduce((sum, m) => sum + m.ebit, 0);
   const totalResult = budget.monthlyData.reduce((sum, m) => sum + m.resultAfterFinancial, 0);
-  const ebitMargin = (totalEbit / budget.totalRevenue) * 100;
-  const resultMargin = (totalResult / budget.totalRevenue) * 100;
+  const ebitMargin = totalRevenue > 0 ? (totalEbit / totalRevenue) * 100 : 0;
+  const resultMargin = totalRevenue > 0 ? (totalResult / totalRevenue) * 100 : 0;
 
   const metrics = [
     {
       title: "Total Revenue 2026",
-      value: formatCurrency(budget.totalRevenue),
+      value: formatCurrency(totalRevenue),
       icon: DollarSign,
       color: "text-primary",
     },
