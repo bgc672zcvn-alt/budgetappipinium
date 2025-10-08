@@ -295,13 +295,58 @@ export const BudgetDashboard = () => {
     });
   };
   const handleCostCategoriesUpdate = (updatedCategories: BudgetData["costCategories"]) => {
-    setBudgetData(prev => ({
-      ...prev,
-      [view]: {
-        ...prev[view],
+    setBudgetData(prev => {
+      const current = prev[view];
+      const prevMonthly = current.monthlyData;
+
+      // Beräkna nya marketing-summor per månad baserat på uppdaterade kategorier
+      const norm = (s: string) => s.trim().toLowerCase().slice(0, 3);
+      
+      const recomputed = prevMonthly.map((m) => {
+        const key = norm(m.month);
+        
+        // Summera alla marketing accounts för denna månad
+        let newMarketing = 0;
+        updatedCategories?.forEach(category => {
+          category.accounts.forEach(account => {
+            const monthData = account.monthlyData.find(d => norm(d.month) === key);
+            if (monthData) {
+              newMarketing += monthData.amount;
+            }
+          });
+        });
+
+        // Uppdatera totalOpex med ny marketing
+        const newTotalOpex = m.personnel + newMarketing + m.office + m.otherOpex;
+        const newEbit = m.grossProfit - newTotalOpex - m.depreciation;
+        const newEbitMargin = m.revenue > 0 ? Math.round((newEbit / m.revenue) * 1000) / 10 : 0;
+        const newResultAfterFinancial = newEbit + m.financialCosts;
+
+        return {
+          ...m,
+          marketing: Math.round(newMarketing),
+          totalOpex: Math.round(newTotalOpex),
+          ebit: Math.round(newEbit),
+          ebitMargin: newEbitMargin,
+          resultAfterFinancial: Math.round(newResultAfterFinancial),
+        };
+      });
+
+      const updatedCurrent: BudgetData = {
+        ...current,
+        monthlyData: recomputed,
         costCategories: updatedCategories,
-      },
-    }));
+      };
+
+      const next = { ...prev, [view]: updatedCurrent } as Record<CompanyView, BudgetData>;
+      const updatedIpinium = (view === "ipinium" ? updatedCurrent : prev.ipinium);
+      const updatedOnepan = (view === "onepan" ? updatedCurrent : prev.onepan);
+
+      return {
+        ...next,
+        combined: computeCombined(updatedIpinium, updatedOnepan),
+      };
+    });
   };
 
   return (

@@ -286,12 +286,59 @@ export const ipiniumBudget: BudgetData = {
   costCategories: generateIpiniumCostCategories(),
 };
 
+// OnePan Marketing Cost Categories
+const generateOnePanMarketingCategories = (): CostCategory[] => {
+  const targetRevenue = 7000000;
+  
+  const factors = months.map((_, index) => (
+    index === 11 ? 1.40 :
+    index === 10 ? 1.25 :
+    index === 9 ? 1.20 :
+    index === 6 ? 0.30 :
+    index === 5 ? 0.70 :
+    index === 7 ? 0.55 :
+    index === 2 ? 1.35 :
+    index <= 1 ? 0.90 :
+    0.95
+  ));
+
+  const sumFactors = factors.reduce((a, b) => a + b, 0);
+  const base = targetRevenue / sumFactors;
+
+  const createMonthlyData = (percentage: number): AccountMonthly[] => {
+    return months.map((month, index) => {
+      const seasonalFactor = factors[index];
+      const revenue = base * seasonalFactor;
+      const amount = revenue * percentage;
+      
+      return {
+        month,
+        amount: Math.round(amount),
+      };
+    });
+  };
+
+  return [
+    {
+      name: "Marketing",
+      accounts: [
+        { name: "Meta", monthlyData: createMonthlyData(0.08) }, // 8% of revenue
+        { name: "Google", monthlyData: createMonthlyData(0.06) }, // 6% of revenue
+        { name: "Influencer Marketing", monthlyData: createMonthlyData(0.04) }, // 4% of revenue
+        { name: "Content", monthlyData: createMonthlyData(0.03) }, // 3% of revenue
+        { name: "Other", monthlyData: createMonthlyData(0.01) }, // 1% of revenue
+      ],
+    },
+  ];
+};
+
 export const onepanBudget: BudgetData = {
   company: "OnePan",
   totalRevenue: generateOnepanMonthly().reduce((s, m) => s + m.revenue, 0),
   targetRevenue: 7000000,
   growthRate: "+180%",
   monthlyData: generateOnepanMonthly(),
+  costCategories: generateOnePanMarketingCategories(),
 };
 
 export const getCombinedBudget = (): BudgetData => {
