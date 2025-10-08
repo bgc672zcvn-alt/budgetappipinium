@@ -13,10 +13,13 @@ const generateIpiniumMonthly = (): MonthlyData[] => {
   const avgMonthly = targetRevenue / 12;
   
   return months.map((month, index) => {
-    // Realistic seasonal variation based on 2025 actuals
+    // Realistic seasonal variation with very weak July and strong December
     const seasonalFactor = 
-      index >= 9 ? 1.35 : // Oct-Dec: strong quarter
-      index >= 5 && index <= 7 ? 0.80 : // Jun-Aug: weaker summer
+      index === 11 ? 1.60 : // December: very strong end of year
+      index === 10 ? 1.35 : // November: strong
+      index === 9 ? 1.30 : // October: strong
+      index === 6 ? 0.50 : // July: very weak summer (1.25M)
+      index === 5 || index === 7 ? 0.85 : // June, August: weaker summer
       index === 2 ? 1.20 : // March peak
       0.95;
     
@@ -67,12 +70,15 @@ const generateOnepanMonthly = (): MonthlyData[] => {
   const avgMonthly = targetRevenue / 12;
   
   return months.map((month, index) => {
-    // Seasonal pattern based on 2025: stronger in Q1, weaker in summer
+    // Seasonal pattern with very weak July and strong December
     const seasonalFactor = 
+      index === 11 ? 1.45 : // December: strong end of year
+      index === 10 ? 1.20 : // November: growth
+      index === 9 ? 1.15 : // October: growth
+      index === 6 ? 0.35 : // July: very weak summer (0.23M)
+      index === 5 || index === 7 ? 0.80 : // June, August: weaker summer
       index === 2 ? 1.30 : // March peak
       index <= 1 ? 1.05 : // Jan-Feb
-      index >= 9 ? 1.15 : // Oct-Dec growth
-      index >= 5 && index <= 7 ? 0.75 : // Jun-Aug: weak summer
       0.90;
     
     const revenue = avgMonthly * seasonalFactor;
