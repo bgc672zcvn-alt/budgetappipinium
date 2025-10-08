@@ -75,9 +75,9 @@ export const BudgetDashboard = () => {
   const [view, setView] = useState<CompanyView>("ipinium");
   const [user, setUser] = useState<User | null>(null);
   const [budgetData, setBudgetData] = useState<Record<CompanyView, BudgetData>>({
-    ipinium: ipiniumBudget,
-    onepan: onepanBudget,
-    combined: computeCombined(ipiniumBudget, onepanBudget),
+    ipinium: normalizeTotals(ipiniumBudget),
+    onepan: normalizeTotals(onepanBudget),
+    combined: computeCombined(normalizeTotals(ipiniumBudget), normalizeTotals(onepanBudget)),
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -126,10 +126,13 @@ export const BudgetDashboard = () => {
           const ip = loaded['ipinium ab'] || ipiniumBudget;
           const op = loaded['onepan'] || onepanBudget;
 
+          const nip = normalizeTotals(ip);
+          const nop = normalizeTotals(op);
+
           setBudgetData({
-            ipinium: ip,
-            onepan: op,
-            combined: computeCombined(ip, op),
+            ipinium: nip,
+            onepan: nop,
+            combined: computeCombined(nip, nop),
           });
         }
       } catch (error) {
@@ -151,8 +154,8 @@ export const BudgetDashboard = () => {
         await supabase
           .from('budget_data')
           .upsert([
-            { company: 'Ipinium AB', data: budgetData.ipinium as any },
-            { company: 'OnePan', data: budgetData.onepan as any },
+            { company: 'Ipinium AB', data: normalizeTotals(budgetData.ipinium) as any },
+            { company: 'OnePan', data: normalizeTotals(budgetData.onepan) as any },
           ], { onConflict: 'company' });
       } catch (error) {
         console.error('Fel vid sparande:', error);

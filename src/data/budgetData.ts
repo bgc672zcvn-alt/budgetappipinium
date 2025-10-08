@@ -278,7 +278,7 @@ const generateIpiniumCostCategories = (): CostCategory[] => {
 
 export const ipiniumBudget: BudgetData = {
   company: "Ipinium AB",
-  totalRevenue: 28000000,
+  totalRevenue: generateIpiniumMonthly().reduce((s, m) => s + m.revenue, 0),
   targetRevenue: 28000000,
   growthRate: "+36%",
   monthlyData: generateIpiniumMonthly(),
@@ -288,7 +288,7 @@ export const ipiniumBudget: BudgetData = {
 
 export const onepanBudget: BudgetData = {
   company: "OnePan",
-  totalRevenue: 7000000,
+  totalRevenue: generateOnepanMonthly().reduce((s, m) => s + m.revenue, 0),
   targetRevenue: 7000000,
   growthRate: "+180%",
   monthlyData: generateOnepanMonthly(),
@@ -338,8 +338,8 @@ export const getCombinedBudget = (): BudgetData => {
   
   return {
     company: "Combined",
-    totalRevenue: 35000000,
-    targetRevenue: 35000000,
+    totalRevenue: combinedMonthly.reduce((s, m) => s + m.revenue, 0),
+    targetRevenue: ipiniumBudget.targetRevenue + onepanBudget.targetRevenue,
     growthRate: "+59%",
     monthlyData: combinedMonthly,
   };
