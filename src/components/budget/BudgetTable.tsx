@@ -30,25 +30,25 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
           Monthly Breakdown
         </h2>
       </div>
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <Table>
-          <TableHeader className="sticky top-0 z-20 bg-background">
-            <TableRow className="bg-muted/50">
-              <TableHead className="font-semibold sticky left-0 bg-muted/50 z-30">Month</TableHead>
-              <TableHead className="text-right font-semibold">Revenue</TableHead>
-              <TableHead className="text-right font-semibold">COGS</TableHead>
-              <TableHead className="text-right font-semibold">Gross Profit</TableHead>
-              <TableHead className="text-right font-semibold">GM %</TableHead>
-              <TableHead className="text-right font-semibold">Personnel</TableHead>
-              <TableHead className="text-right font-semibold">Marketing</TableHead>
-              <TableHead className="text-right font-semibold">Office</TableHead>
-              <TableHead className="text-right font-semibold">Other OPEX</TableHead>
-              <TableHead className="text-right font-semibold">Total OPEX</TableHead>
-              <TableHead className="text-right font-semibold">D&A</TableHead>
-              <TableHead className="text-right font-semibold">EBIT</TableHead>
-              <TableHead className="text-right font-semibold">EBIT %</TableHead>
-              <TableHead className="text-right font-semibold">Financial</TableHead>
-              <TableHead className="text-right font-semibold">Result</TableHead>
+          <TableHeader>
+            <TableRow className="sticky top-0 z-30 bg-background">
+              <TableHead className="font-semibold sticky top-0 left-0 z-40 bg-background">Month</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 bg-background">Revenue</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 bg-background">COGS</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 bg-background">Gross Profit</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 bg-background">GM %</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 bg-background">Personnel</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 bg-background">Marketing</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 bg-background">Office</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 bg-background">Other OPEX</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 bg-background">Total OPEX</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 bg-background">D&A</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 bg-background">EBIT</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 bg-background">EBIT %</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 bg-background">Financial</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 bg-background">Result</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

@@ -102,17 +102,17 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate, company }: Expa
         Klicka på kategori för att expandera och se underkonton. Klicka på belopp för att redigera.
       </p>
 
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <Table>
-          <TableHeader className="sticky top-0 z-20 bg-background">
-            <TableRow>
-              <TableHead className="w-[250px] sticky left-0 bg-background z-30">Kategori / Konto</TableHead>
+          <TableHeader>
+            <TableRow className="sticky top-0 z-30 bg-background">
+              <TableHead className="w-[250px] sticky top-0 left-0 bg-background z-40">Kategori / Konto</TableHead>
               {months.map((month) => (
-                <TableHead key={month} className="text-right min-w-[120px] bg-background">
+                <TableHead key={month} className="text-right min-w-[120px] sticky top-0 bg-background">
                   {month}
                 </TableHead>
               ))}
-              <TableHead className="text-right min-w-[120px] font-semibold bg-background">Totalt</TableHead>
+              <TableHead className="text-right min-w-[120px] font-semibold sticky top-0 bg-background">Totalt</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

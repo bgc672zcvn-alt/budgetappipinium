@@ -169,18 +169,18 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
         Klicka på intäkt eller BV% för att redigera värden. Bruttovinst räknas automatiskt ut.
       </p>
 
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <Table>
-          <TableHeader className="sticky top-0 z-20 bg-background">
-            <TableRow>
-              <TableHead className="w-[200px] sticky left-0 bg-background z-30">Affärsområde</TableHead>
-              <TableHead className="w-[120px] bg-background">Typ</TableHead>
+          <TableHeader>
+            <TableRow className="sticky top-0 z-30 bg-background">
+              <TableHead className="w-[200px] sticky top-0 left-0 bg-background z-40">Affärsområde</TableHead>
+              <TableHead className="w-[120px] sticky top-0 bg-background">Typ</TableHead>
               {months.map((month) => (
-                <TableHead key={month} className="text-right min-w-[120px] bg-background">
+                <TableHead key={month} className="text-right min-w-[120px] sticky top-0 bg-background">
                   {month}
                 </TableHead>
               ))}
-              <TableHead className="text-right min-w-[120px] font-semibold bg-background">Totalt</TableHead>
+              <TableHead className="text-right min-w-[120px] font-semibold sticky top-0 bg-background">Totalt</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
