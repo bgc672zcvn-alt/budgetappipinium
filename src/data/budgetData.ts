@@ -176,14 +176,19 @@ const generateOnepanMonthly = (): MonthlyData[] => {
 // Ipinium Business Areas - Growth focused on Tina products
 const generateIpiniumBusinessAreas = (): BusinessArea[] => {
   const businessAreas = [
-    { name: "Plåtar", share: 0.09, margin: 44.4 },
-    { name: "Kyla och värme", share: 0.07, margin: 43.6 },
-    { name: "Tina Land", share: 0.15, margin: 26.8 }, // Increased for growth
-    { name: "Tina Marin", share: 0.32, margin: 29.9 }, // Increased for growth
+    // Tina-produkter först
+    { name: "Tina Land", share: 0.15, margin: 26.8 },
+    { name: "Tina Marin", share: 0.32, margin: 29.9 },
     { name: "Reservdelar Tina", share: 0.32, margin: 45.4 },
-    { name: "Färsmaskiner", share: 0.03, margin: 67.5 },
+    
+    // Plåtprodukter
+    { name: "Plåtar", share: 0.09, margin: 44.4 },
     { name: "RC plåtar", share: 0.02, margin: 48.1 },
-    { name: "Ångstäd", share: 0.00, margin: 0 }, // Nytt område utan intäkter än
+    
+    // Övriga i alfabetisk ordning
+    { name: "Färsmaskiner", share: 0.03, margin: 67.5 },
+    { name: "Kyla och värme", share: 0.07, margin: 43.6 },
+    { name: "Ångstäd", share: 0.00, margin: 0 },
   ];
 
   const targetRevenue = 28000000;
