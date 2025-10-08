@@ -5,10 +5,10 @@ const months = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ];
 
-// Ipinium Budget - Based on actuals aug 2025: 2.1M/month, targeting 25M SEK for 2026
+// Ipinium Budget - Based on actuals aug 2025: 2.1M/month, targeting 28M SEK for 2026
 // Current performance: ~48% gross margin, 5% EBIT margin
 const generateIpiniumMonthly = (): MonthlyData[] => {
-  const targetRevenue = 25000000; // 25M SEK (realistic based on 2025 actuals)
+  const targetRevenue = 28000000; // 28M SEK (growth driven by Tina products)
   const avgMonthly = targetRevenue / 12;
   
   return months.map((month, index) => {
@@ -63,10 +63,10 @@ const generateIpiniumMonthly = (): MonthlyData[] => {
   });
 };
 
-// OnePan Budget - Based on actuals aug 2025: 1.66M ytd (target revised to 4M)
+// OnePan Budget - Based on actuals aug 2025: 1.66M ytd (target revised to 7M)
 // Current: Significant losses -2.4M ytd, 42% gross margin
 const generateOnepanMonthly = (): MonthlyData[] => {
-  const targetRevenue = 4000000; // 4M SEK (realistic, on track for ~2.5M in 2025)
+  const targetRevenue = 7000000; // 7M SEK (ambitious growth target)
   const avgMonthly = targetRevenue / 12;
   
   return months.map((month, index) => {
@@ -122,19 +122,19 @@ const generateOnepanMonthly = (): MonthlyData[] => {
   });
 };
 
-// Ipinium Business Areas based on actual distribution 2025
+// Ipinium Business Areas - Growth focused on Tina products
 const generateIpiniumBusinessAreas = (): BusinessArea[] => {
   const businessAreas = [
-    { name: "Plåtar", share: 0.10, margin: 44.4 },
-    { name: "Kyla och värme", share: 0.08, margin: 43.6 },
-    { name: "Tina Land", share: 0.12, margin: 26.8 },
-    { name: "Tina Marin", share: 0.28, margin: 29.9 },
-    { name: "Reservdelar Tina", share: 0.35, margin: 45.4 },
+    { name: "Plåtar", share: 0.09, margin: 44.4 },
+    { name: "Kyla och värme", share: 0.07, margin: 43.6 },
+    { name: "Tina Land", share: 0.15, margin: 26.8 }, // Increased for growth
+    { name: "Tina Marin", share: 0.32, margin: 29.9 }, // Increased for growth
+    { name: "Reservdelar Tina", share: 0.32, margin: 45.4 },
     { name: "Färsmaskiner", share: 0.03, margin: 67.5 },
-    { name: "RC plåtar", share: 0.04, margin: 48.1 },
+    { name: "RC plåtar", share: 0.02, margin: 48.1 },
   ];
 
-  const targetRevenue = 25000000;
+  const targetRevenue = 28000000;
   const avgMonthly = targetRevenue / 12;
 
   return businessAreas.map(area => {
@@ -227,9 +227,9 @@ const generateIpiniumCostCategories = (): CostCategory[] => {
 
 export const ipiniumBudget: BudgetData = {
   company: "Ipinium AB",
-  totalRevenue: 25000000,
-  targetRevenue: 25000000,
-  growthRate: "+22%",
+  totalRevenue: 28000000,
+  targetRevenue: 28000000,
+  growthRate: "+36%",
   monthlyData: generateIpiniumMonthly(),
   businessAreas: generateIpiniumBusinessAreas(),
   costCategories: generateIpiniumCostCategories(),
@@ -237,9 +237,9 @@ export const ipiniumBudget: BudgetData = {
 
 export const onepanBudget: BudgetData = {
   company: "OnePan",
-  totalRevenue: 4000000,
-  targetRevenue: 4000000,
-  growthRate: "+60%",
+  totalRevenue: 7000000,
+  targetRevenue: 7000000,
+  growthRate: "+180%",
   monthlyData: generateOnepanMonthly(),
 };
 
@@ -287,9 +287,9 @@ export const getCombinedBudget = (): BudgetData => {
   
   return {
     company: "Combined",
-    totalRevenue: 29000000,
-    targetRevenue: 29000000,
-    growthRate: "+32%",
+    totalRevenue: 35000000,
+    targetRevenue: 35000000,
+    growthRate: "+59%",
     monthlyData: combinedMonthly,
   };
 };
