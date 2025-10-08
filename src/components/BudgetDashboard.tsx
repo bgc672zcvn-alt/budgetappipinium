@@ -125,8 +125,14 @@ export const BudgetDashboard = () => {
             loaded[row.company.toLowerCase()] = row.data as unknown as BudgetData;
           });
 
-          const ip = loaded['ipinium ab'] || ipiniumBudget;
-          const op = loaded['onepan'] || onepanBudget;
+          // Merga sparad data med default-budgets för att säkerställa nya fält finns
+          const ip = loaded['ipinium ab'] 
+            ? { ...ipiniumBudget, ...loaded['ipinium ab'], costCategories: loaded['ipinium ab'].costCategories || ipiniumBudget.costCategories }
+            : ipiniumBudget;
+          
+          const op = loaded['onepan'] 
+            ? { ...onepanBudget, ...loaded['onepan'], costCategories: loaded['onepan'].costCategories || onepanBudget.costCategories }
+            : onepanBudget;
 
           const nip = normalizeTotals(ip);
           const nop = normalizeTotals(op);
