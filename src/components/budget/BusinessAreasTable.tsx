@@ -172,7 +172,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
       <div className="relative">
         <Table>
           <TableHeader>
-            <TableRow className="sticky top-0 z-30 bg-background">
+            <TableRow className="bg-background">
               <TableHead className="w-[200px] sticky top-0 left-0 bg-background z-40">Affärsområde</TableHead>
               <TableHead className="w-[120px] sticky top-0 bg-background">Typ</TableHead>
               {months.map((month) => (

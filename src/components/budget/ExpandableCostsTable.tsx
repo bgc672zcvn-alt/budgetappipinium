@@ -105,7 +105,7 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate, company }: Expa
       <div className="relative">
         <Table>
           <TableHeader>
-            <TableRow className="sticky top-0 z-30 bg-background">
+            <TableRow className="bg-background">
               <TableHead className="w-[250px] sticky top-0 left-0 bg-background z-40">Kategori / Konto</TableHead>
               {months.map((month) => (
                 <TableHead key={month} className="text-right min-w-[120px] sticky top-0 bg-background">

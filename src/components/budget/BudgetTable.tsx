@@ -33,7 +33,7 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
       <div className="relative">
         <Table>
           <TableHeader>
-            <TableRow className="sticky top-0 z-30 bg-background">
+            <TableRow className="bg-background">
               <TableHead className="font-semibold sticky top-0 left-0 z-40 bg-background">Month</TableHead>
               <TableHead className="text-right font-semibold sticky top-0 bg-background">Revenue</TableHead>
               <TableHead className="text-right font-semibold sticky top-0 bg-background">COGS</TableHead>
