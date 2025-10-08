@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BudgetMetrics } from "./budget/BudgetMetrics";
@@ -8,7 +8,6 @@ import { BusinessAreasTable } from "./budget/BusinessAreasTable";
 import { ExpandableCostsTable } from "./budget/ExpandableCostsTable";
 import { ipiniumBudget, onepanBudget } from "@/data/budgetData";
 import { BudgetData } from "@/types/budget";
-import { supabase } from "@/integrations/supabase/client";
 
 type CompanyView = "ipinium" | "onepan" | "combined";
 
@@ -69,7 +68,7 @@ export const BudgetDashboard = () => {
   const [budgetData, setBudgetData] = useState<Record<CompanyView, BudgetData>>({
     ipinium: ipiniumBudget,
     onepan: onepanBudget,
-    combined: getCombinedBudget(),
+    combined: computeCombined(ipiniumBudget, onepanBudget),
   });
 
   const budget = budgetData[view];
@@ -126,19 +125,29 @@ export const BudgetDashboard = () => {
           return m;
         }
 
-        let totalRevenue = 0;
-        let totalGrossProfit = 0;
-
-        mergedAreas.forEach((area) => {
+        // Räkna delta mot tidigare affärsområdessumma i stället för att ersätta hela månaden
+        let beforeRevenue = 0;
+        let beforeGrossProfit = 0;
+        existingAreas.forEach((area) => {
           const d = area.monthlyData.find((d) => norm(d.month) === key);
           if (d) {
-            totalRevenue += d.revenue ?? 0;
-            totalGrossProfit += d.grossProfit ?? 0;
+            beforeRevenue += d.revenue ?? 0;
+            beforeGrossProfit += d.grossProfit ?? 0;
           }
         });
 
-        const revenue = Math.round(totalRevenue);
-        const grossProfit = Math.round(totalGrossProfit);
+        let afterRevenue = 0;
+        let afterGrossProfit = 0;
+        mergedAreas.forEach((area) => {
+          const d = area.monthlyData.find((d) => norm(d.month) === key);
+          if (d) {
+            afterRevenue += d.revenue ?? 0;
+            afterGrossProfit += d.grossProfit ?? 0;
+          }
+        });
+
+        const revenue = Math.round(m.revenue + (afterRevenue - beforeRevenue));
+        const grossProfit = Math.round(m.grossProfit + (afterGrossProfit - beforeGrossProfit));
         const cogs = Math.max(0, revenue - grossProfit);
         const grossMargin = revenue > 0 ? Math.round((grossProfit / revenue) * 1000) / 10 : 0;
 
@@ -164,14 +173,20 @@ export const BudgetDashboard = () => {
 
       const newTotalRevenue = recomputed.reduce((s, md) => s + md.revenue, 0);
 
+      const updatedCurrent: BudgetData = {
+        ...current,
+        monthlyData: recomputed,
+        totalRevenue: newTotalRevenue,
+        businessAreas: mergedAreas,
+      };
+
+      const next = { ...prev, [view]: updatedCurrent } as Record<CompanyView, BudgetData>;
+      const updatedIpinium = (view === "ipinium" ? updatedCurrent : prev.ipinium);
+      const updatedOnepan = (view === "onepan" ? updatedCurrent : prev.onepan);
+
       return {
-        ...prev,
-        [view]: {
-          ...current,
-          monthlyData: recomputed,
-          totalRevenue: newTotalRevenue,
-          businessAreas: mergedAreas,
-        },
+        ...next,
+        combined: computeCombined(updatedIpinium, updatedOnepan),
       };
     });
   };
