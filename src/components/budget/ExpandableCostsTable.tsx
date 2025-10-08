@@ -173,10 +173,10 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate }: ExpandableCos
                           ) : (
                             <button
                               onClick={() => startEdit(account.name, data.month, data.amount)}
-                              className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 ml-auto"
+                              className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 ml-auto group transition-colors"
                             >
-                              {formatCurrency(data.amount)}
-                              <Edit2 className="h-3 w-3 opacity-50" />
+                              <span>{formatCurrency(data.amount)}</span>
+                              <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                             </button>
                           )}
                         </TableCell>

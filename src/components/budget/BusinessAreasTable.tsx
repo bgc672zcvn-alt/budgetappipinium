@@ -113,9 +113,9 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
           </TableHeader>
           <TableBody>
             {businessAreas.map((area) => (
-              <div key={area.name}>
+              <>
                 {/* Revenue Row */}
-                <TableRow>
+                <TableRow key={`${area.name}-revenue`}>
                   <TableCell className="font-medium sticky left-0 bg-background z-10" rowSpan={3}>
                     {area.name}
                   </TableCell>
@@ -141,10 +141,10 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                       ) : (
                         <button
                           onClick={() => startEdit(area.name, data.month, 'revenue', data.revenue)}
-                          className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 ml-auto"
+                          className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 ml-auto group transition-colors"
                         >
-                          {formatCurrency(data.revenue)}
-                          <Edit2 className="h-3 w-3 opacity-50" />
+                          <span>{formatCurrency(data.revenue)}</span>
+                          <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                         </button>
                       )}
                     </TableCell>
@@ -155,7 +155,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                 </TableRow>
 
                 {/* Contribution Margin Row */}
-                <TableRow>
+                <TableRow key={`${area.name}-margin`}>
                   <TableCell className="text-sm text-muted-foreground">BV%</TableCell>
                   {area.monthlyData.map((data) => (
                     <TableCell key={data.month} className="text-right">
@@ -180,10 +180,10 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                       ) : (
                         <button
                           onClick={() => startEdit(area.name, data.month, 'margin', data.contributionMargin)}
-                          className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 ml-auto"
+                          className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 ml-auto group transition-colors"
                         >
-                          {data.contributionMargin.toFixed(1)}%
-                          <Edit2 className="h-3 w-3 opacity-50" />
+                          <span>{data.contributionMargin.toFixed(1)}%</span>
+                          <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                         </button>
                       )}
                     </TableCell>
@@ -195,7 +195,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                 </TableRow>
 
                 {/* Gross Profit Row */}
-                <TableRow className="border-b-2">
+                <TableRow key={`${area.name}-profit`} className="border-b-2">
                   <TableCell className="text-sm text-muted-foreground">Bruttovinst</TableCell>
                   {area.monthlyData.map((data) => (
                     <TableCell key={data.month} className="text-right text-success">
@@ -206,7 +206,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                     {formatCurrency(area.monthlyData.reduce((sum, d) => sum + d.grossProfit, 0))}
                   </TableCell>
                 </TableRow>
-              </div>
+              </>
             ))}
 
             {/* Totals Row */}
