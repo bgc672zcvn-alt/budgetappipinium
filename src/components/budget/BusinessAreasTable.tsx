@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { BusinessArea } from "@/types/budget";
 import { Edit2, Check, X } from "lucide-react";
+import { CommentButton } from "@/components/comments/CommentButton";
 
 interface BusinessAreasTableProps {
   businessAreas: BusinessArea[];
@@ -139,13 +140,21 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                           </Button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => startEdit(area.name, data.month, 'revenue', data.revenue)}
-                          className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 ml-auto group transition-colors"
-                        >
-                          <span>{formatCurrency(data.revenue)}</span>
-                          <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                        </button>
+                        <div className="flex items-center gap-1 justify-end">
+                          <button
+                            onClick={() => startEdit(area.name, data.month, 'revenue', data.revenue)}
+                            className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 group transition-colors"
+                          >
+                            <span>{formatCurrency(data.revenue)}</span>
+                            <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                          </button>
+                          <CommentButton
+                            company="Ipinium AB"
+                            field={`businessArea_${area.name}_revenue`}
+                            month={data.month}
+                            value={data.revenue}
+                          />
+                        </div>
                       )}
                     </TableCell>
                   ))}

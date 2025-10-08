@@ -12,10 +12,12 @@ import {
 } from "@/components/ui/table";
 import { CostCategory } from "@/types/budget";
 import { ChevronDown, ChevronRight, Edit2, Check, X } from "lucide-react";
+import { CommentButton } from "@/components/comments/CommentButton";
 
 interface ExpandableCostsTableProps {
   costCategories: CostCategory[];
   onUpdate: (updatedCategories: CostCategory[]) => void;
+  company: string;
 }
 
 const months = [
@@ -23,7 +25,7 @@ const months = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ];
 
-export const ExpandableCostsTable = ({ costCategories, onUpdate }: ExpandableCostsTableProps) => {
+export const ExpandableCostsTable = ({ costCategories, onUpdate, company }: ExpandableCostsTableProps) => {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [editingAccount, setEditingAccount] = useState<string | null>(null);
   const [editingMonth, setEditingMonth] = useState<string | null>(null);
@@ -171,13 +173,21 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate }: ExpandableCos
                               </Button>
                             </div>
                           ) : (
-                            <button
-                              onClick={() => startEdit(account.name, data.month, data.amount)}
-                              className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 ml-auto group transition-colors"
-                            >
-                              <span>{formatCurrency(data.amount)}</span>
-                              <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                            </button>
+                            <div className="flex items-center gap-1 justify-end">
+                              <button
+                                onClick={() => startEdit(account.name, data.month, data.amount)}
+                                className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 group transition-colors"
+                              >
+                                <span>{formatCurrency(data.amount)}</span>
+                                <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                              </button>
+                              <CommentButton
+                                company={company}
+                                field={`cost_${category.name}_${account.name}`}
+                                month={data.month}
+                                value={data.amount}
+                              />
+                            </div>
                           )}
                         </TableCell>
                       ))}

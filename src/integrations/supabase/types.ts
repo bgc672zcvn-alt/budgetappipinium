@@ -38,6 +38,39 @@ export type Database = {
         }
         Relationships: []
       }
+      comments: {
+        Row: {
+          comment_text: string
+          company: string
+          created_at: string | null
+          id: string
+          target_field: string
+          target_month: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          comment_text: string
+          company: string
+          created_at?: string | null
+          id?: string
+          target_field: string
+          target_month?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          comment_text?: string
+          company?: string
+          created_at?: string | null
+          id?: string
+          target_field?: string
+          target_month?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null

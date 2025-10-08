@@ -8,6 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { BudgetData } from "@/types/budget";
+import { CommentButton } from "@/components/comments/CommentButton";
 
 interface BudgetTableProps {
   budget: BudgetData;
@@ -54,47 +55,145 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
             {budget.monthlyData.map((month) => (
               <TableRow key={month.month} className="hover:bg-muted/30">
                 <TableCell className="font-medium">{month.month}</TableCell>
-                <TableCell className="text-right font-semibold">
-                  {formatCurrency(month.revenue)}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="font-semibold">{formatCurrency(month.revenue)}</span>
+                    <CommentButton
+                      company={budget.company}
+                      field="revenue"
+                      month={month.month}
+                      value={month.revenue}
+                    />
+                  </div>
                 </TableCell>
-                <TableCell className="text-right text-destructive">
-                  {formatCurrency(month.cogs)}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="text-destructive">{formatCurrency(month.cogs)}</span>
+                    <CommentButton
+                      company={budget.company}
+                      field="cogs"
+                      month={month.month}
+                      value={month.cogs}
+                    />
+                  </div>
                 </TableCell>
-                <TableCell className="text-right font-semibold text-success">
-                  {formatCurrency(month.grossProfit)}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="font-semibold text-success">{formatCurrency(month.grossProfit)}</span>
+                    <CommentButton
+                      company={budget.company}
+                      field="grossProfit"
+                      month={month.month}
+                      value={month.grossProfit}
+                    />
+                  </div>
                 </TableCell>
                 <TableCell className="text-right text-success">
                   {month.grossMargin.toFixed(1)}%
                 </TableCell>
-                <TableCell className="text-right text-muted-foreground">
-                  {formatCurrency(month.personnel)}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="text-muted-foreground">{formatCurrency(month.personnel)}</span>
+                    <CommentButton
+                      company={budget.company}
+                      field="personnel"
+                      month={month.month}
+                      value={month.personnel}
+                    />
+                  </div>
                 </TableCell>
-                <TableCell className="text-right text-muted-foreground">
-                  {formatCurrency(month.marketing)}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="text-muted-foreground">{formatCurrency(month.marketing)}</span>
+                    <CommentButton
+                      company={budget.company}
+                      field="marketing"
+                      month={month.month}
+                      value={month.marketing}
+                    />
+                  </div>
                 </TableCell>
-                <TableCell className="text-right text-muted-foreground">
-                  {formatCurrency(month.office)}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="text-muted-foreground">{formatCurrency(month.office)}</span>
+                    <CommentButton
+                      company={budget.company}
+                      field="office"
+                      month={month.month}
+                      value={month.office}
+                    />
+                  </div>
                 </TableCell>
-                <TableCell className="text-right text-muted-foreground">
-                  {formatCurrency(month.otherOpex)}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="text-muted-foreground">{formatCurrency(month.otherOpex)}</span>
+                    <CommentButton
+                      company={budget.company}
+                      field="otherOpex"
+                      month={month.month}
+                      value={month.otherOpex}
+                    />
+                  </div>
                 </TableCell>
-                <TableCell className="text-right text-destructive">
-                  {formatCurrency(month.totalOpex)}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="text-destructive">{formatCurrency(month.totalOpex)}</span>
+                    <CommentButton
+                      company={budget.company}
+                      field="totalOpex"
+                      month={month.month}
+                      value={month.totalOpex}
+                    />
+                  </div>
                 </TableCell>
-                <TableCell className="text-right text-muted-foreground">
-                  {formatCurrency(month.depreciation)}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="text-muted-foreground">{formatCurrency(month.depreciation)}</span>
+                    <CommentButton
+                      company={budget.company}
+                      field="depreciation"
+                      month={month.month}
+                      value={month.depreciation}
+                    />
+                  </div>
                 </TableCell>
-                <TableCell className="text-right font-semibold text-accent">
-                  {formatCurrency(month.ebit)}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="font-semibold text-accent">{formatCurrency(month.ebit)}</span>
+                    <CommentButton
+                      company={budget.company}
+                      field="ebit"
+                      month={month.month}
+                      value={month.ebit}
+                    />
+                  </div>
                 </TableCell>
                 <TableCell className="text-right text-accent">
                   {month.ebitMargin.toFixed(1)}%
                 </TableCell>
-                <TableCell className="text-right text-destructive">
-                  {formatCurrency(month.financialCosts)}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="text-destructive">{formatCurrency(month.financialCosts)}</span>
+                    <CommentButton
+                      company={budget.company}
+                      field="financialCosts"
+                      month={month.month}
+                      value={month.financialCosts}
+                    />
+                  </div>
                 </TableCell>
-                <TableCell className={`text-right font-semibold ${month.resultAfterFinancial >= 0 ? 'text-success' : 'text-destructive'}`}>
-                  {formatCurrency(month.resultAfterFinancial)}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className={`font-semibold ${month.resultAfterFinancial >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      {formatCurrency(month.resultAfterFinancial)}
+                    </span>
+                    <CommentButton
+                      company={budget.company}
+                      field="resultAfterFinancial"
+                      month={month.month}
+                      value={month.resultAfterFinancial}
+                    />
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

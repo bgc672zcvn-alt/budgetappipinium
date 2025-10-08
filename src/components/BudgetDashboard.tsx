@@ -401,11 +401,12 @@ export const BudgetDashboard = () => {
               <BudgetChart data={budget.monthlyData} />
             </Card>
 
-            {/* Cost Categories (only for Ipinium) */}
+            {/* Cost Categories (only for Ipinium and OnePan) */}
             {budget.costCategories && (
               <ExpandableCostsTable
                 costCategories={budget.costCategories}
                 onUpdate={handleCostCategoriesUpdate}
+                company={budget.company}
               />
             )}
 
