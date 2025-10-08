@@ -9,11 +9,11 @@ export interface MonthlyData {
   office: number;
   otherOpex: number;
   totalOpex: number;
-  ebitda: number;
-  ebitdaMargin: number;
   depreciation: number;
   ebit: number;
   ebitMargin: number;
+  financialCosts: number;
+  resultAfterFinancial: number;
 }
 
 export interface BudgetData {

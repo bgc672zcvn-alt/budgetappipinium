@@ -43,11 +43,11 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
               <TableHead className="text-right font-semibold">Office</TableHead>
               <TableHead className="text-right font-semibold">Other OPEX</TableHead>
               <TableHead className="text-right font-semibold">Total OPEX</TableHead>
-              <TableHead className="text-right font-semibold">EBITDA</TableHead>
-              <TableHead className="text-right font-semibold">EBITDA %</TableHead>
               <TableHead className="text-right font-semibold">D&A</TableHead>
               <TableHead className="text-right font-semibold">EBIT</TableHead>
               <TableHead className="text-right font-semibold">EBIT %</TableHead>
+              <TableHead className="text-right font-semibold">Financial</TableHead>
+              <TableHead className="text-right font-semibold">Result</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -81,20 +81,20 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
                 <TableCell className="text-right text-destructive">
                   {formatCurrency(month.totalOpex)}
                 </TableCell>
-                <TableCell className="text-right font-semibold text-accent">
-                  {formatCurrency(month.ebitda)}
-                </TableCell>
-                <TableCell className="text-right text-accent">
-                  {month.ebitdaMargin.toFixed(1)}%
-                </TableCell>
                 <TableCell className="text-right text-muted-foreground">
                   {formatCurrency(month.depreciation)}
                 </TableCell>
-                <TableCell className="text-right font-semibold text-primary">
+                <TableCell className="text-right font-semibold text-accent">
                   {formatCurrency(month.ebit)}
                 </TableCell>
-                <TableCell className="text-right text-primary">
+                <TableCell className="text-right text-accent">
                   {month.ebitMargin.toFixed(1)}%
+                </TableCell>
+                <TableCell className="text-right text-destructive">
+                  {formatCurrency(month.financialCosts)}
+                </TableCell>
+                <TableCell className={`text-right font-semibold ${month.resultAfterFinancial >= 0 ? 'text-success' : 'text-destructive'}`}>
+                  {formatCurrency(month.resultAfterFinancial)}
                 </TableCell>
               </TableRow>
             ))}
@@ -147,34 +147,36 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
                   budget.monthlyData.reduce((sum, m) => sum + m.totalOpex, 0)
                 )}
               </TableCell>
-              <TableCell className="text-right text-accent">
-                {formatCurrency(
-                  budget.monthlyData.reduce((sum, m) => sum + m.ebitda, 0)
-                )}
-              </TableCell>
-              <TableCell className="text-right text-accent">
-                {(
-                  (budget.monthlyData.reduce((sum, m) => sum + m.ebitda, 0) /
-                    budget.monthlyData.reduce((sum, m) => sum + m.revenue, 0)) *
-                  100
-                ).toFixed(1)}%
-              </TableCell>
               <TableCell className="text-right">
                 {formatCurrency(
                   budget.monthlyData.reduce((sum, m) => sum + m.depreciation, 0)
                 )}
               </TableCell>
-              <TableCell className="text-right text-primary">
+              <TableCell className="text-right text-accent">
                 {formatCurrency(
                   budget.monthlyData.reduce((sum, m) => sum + m.ebit, 0)
                 )}
               </TableCell>
-              <TableCell className="text-right text-primary">
+              <TableCell className="text-right text-accent">
                 {(
                   (budget.monthlyData.reduce((sum, m) => sum + m.ebit, 0) /
                     budget.monthlyData.reduce((sum, m) => sum + m.revenue, 0)) *
                   100
                 ).toFixed(1)}%
+              </TableCell>
+              <TableCell className="text-right text-destructive">
+                {formatCurrency(
+                  budget.monthlyData.reduce((sum, m) => sum + m.financialCosts, 0)
+                )}
+              </TableCell>
+              <TableCell className={`text-right font-semibold ${
+                budget.monthlyData.reduce((sum, m) => sum + m.resultAfterFinancial, 0) >= 0 
+                  ? 'text-success' 
+                  : 'text-destructive'
+              }`}>
+                {formatCurrency(
+                  budget.monthlyData.reduce((sum, m) => sum + m.resultAfterFinancial, 0)
+                )}
               </TableCell>
             </TableRow>
           </TableBody>

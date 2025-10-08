@@ -15,10 +15,10 @@ export const BudgetMetrics = ({ budget }: BudgetMetricsProps) => {
     }).format(value);
   };
 
-  const totalEbitda = budget.monthlyData.reduce((sum, m) => sum + m.ebitda, 0);
   const totalEbit = budget.monthlyData.reduce((sum, m) => sum + m.ebit, 0);
-  const ebitdaMargin = (totalEbitda / budget.totalRevenue) * 100;
+  const totalResult = budget.monthlyData.reduce((sum, m) => sum + m.resultAfterFinancial, 0);
   const ebitMargin = (totalEbit / budget.totalRevenue) * 100;
+  const resultMargin = (totalResult / budget.totalRevenue) * 100;
 
   const metrics = [
     {
@@ -28,18 +28,18 @@ export const BudgetMetrics = ({ budget }: BudgetMetricsProps) => {
       color: "text-primary",
     },
     {
-      title: "EBITDA",
-      value: formatCurrency(totalEbitda),
-      subtitle: `${ebitdaMargin.toFixed(1)}% margin`,
-      icon: TrendingUp,
-      color: "text-accent",
-    },
-    {
       title: "EBIT",
       value: formatCurrency(totalEbit),
       subtitle: `${ebitMargin.toFixed(1)}% margin`,
       icon: Target,
-      color: "text-success",
+      color: "text-accent",
+    },
+    {
+      title: "Result After Financial",
+      value: formatCurrency(totalResult),
+      subtitle: `${resultMargin.toFixed(1)}% margin`,
+      icon: TrendingUp,
+      color: totalResult >= 0 ? "text-success" : "text-destructive",
     },
     {
       title: "Growth Target",
