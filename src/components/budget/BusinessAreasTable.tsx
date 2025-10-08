@@ -28,7 +28,8 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
   const [editingArea, setEditingArea] = useState<string | null>(null);
   const [editingMonth, setEditingMonth] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<number>(0);
-  const [editType, setEditType] = useState<'revenue' | 'margin'>('revenue');
+  const [editType, setEditType] = useState<'revenue' | 'margin' | 'yearlyMargin'>('revenue');
+  const [editingYearlyMargin, setEditingYearlyMargin] = useState<string | null>(null);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("sv-SE", {
@@ -73,6 +74,25 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
 
     onUpdate(updatedAreas);
     cancelEdit();
+  };
+
+  const saveYearlyMarginEdit = () => {
+    if (!editingYearlyMargin) return;
+
+    const updatedAreas = businessAreas.map(area => {
+      if (area.name !== editingYearlyMargin) return area;
+
+      // Apply new margin to all months
+      const updatedMonthlyData = area.monthlyData.map(data => {
+        const grossProfit = data.revenue * (editValue / 100);
+        return { ...data, contributionMargin: editValue, grossProfit };
+      });
+
+      return { ...area, monthlyData: updatedMonthlyData };
+    });
+
+    onUpdate(updatedAreas);
+    setEditingYearlyMargin(null);
   };
 
   const getTotals = (month: string) => {
@@ -248,9 +268,40 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                       )}
                     </TableCell>
                   ))}
-                  <TableCell className="text-right font-semibold">
-                    {(area.monthlyData.reduce((sum, d) => sum + d.grossProfit, 0) /
-                      area.monthlyData.reduce((sum, d) => sum + d.revenue, 0) * 100).toFixed(1)}%
+                  <TableCell className="text-right">
+                    {editingYearlyMargin === area.name ? (
+                      <div className="flex items-center gap-1 justify-end">
+                        <Input
+                          type="number"
+                          value={editValue}
+                          onChange={(e) => setEditValue(Number(e.target.value))}
+                          className="w-20 h-7"
+                          step="0.1"
+                          autoFocus
+                        />
+                        <span className="text-xs">%</span>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveYearlyMarginEdit}>
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingYearlyMargin(null)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setEditingYearlyMargin(area.name);
+                          const avgMargin = (area.monthlyData.reduce((sum, d) => sum + d.grossProfit, 0) /
+                            area.monthlyData.reduce((sum, d) => sum + d.revenue, 0) * 100);
+                          setEditValue(avgMargin);
+                        }}
+                        className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 ml-auto group transition-colors font-semibold"
+                      >
+                        <span>{(area.monthlyData.reduce((sum, d) => sum + d.grossProfit, 0) /
+                          area.monthlyData.reduce((sum, d) => sum + d.revenue, 0) * 100).toFixed(1)}%</span>
+                        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                      </button>
+                    )}
                   </TableCell>
                 </TableRow>
 
@@ -444,9 +495,15 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
               </>
             )}
 
-            {/* Övriga products - show individually */}
+            {/* Övriga products - show individually (exclude Färsmaskiner and Kyla och värme) */}
             {businessAreas
-              .filter(area => !area.name.toLowerCase().includes("tina") && !area.name.toLowerCase().includes("plåt"))
+              .filter(area => {
+                const name = area.name.toLowerCase();
+                return !name.includes("tina") && 
+                       !name.includes("plåt") && 
+                       !name.includes("färsmaskiner") && 
+                       !name.includes("kyla och värme");
+              })
               .map(area => (
                 <Fragment key={`summary-${area.name}`}>
                   <TableRow className="bg-muted/20">

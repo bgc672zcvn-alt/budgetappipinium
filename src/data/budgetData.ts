@@ -183,6 +183,7 @@ const generateIpiniumBusinessAreas = (): BusinessArea[] => {
     { name: "Reservdelar Tina", share: 0.32, margin: 45.4 },
     { name: "Färsmaskiner", share: 0.03, margin: 67.5 },
     { name: "RC plåtar", share: 0.02, margin: 48.1 },
+    { name: "Ångstäd", share: 0.00, margin: 0 }, // Nytt område utan intäkter än
   ];
 
   const targetRevenue = 28000000;

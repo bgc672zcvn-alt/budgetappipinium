@@ -8,7 +8,6 @@ import { BudgetChart } from "./budget/BudgetChart";
 import { BudgetTable } from "./budget/BudgetTable";
 import { BusinessAreasTable } from "./budget/BusinessAreasTable";
 import { ExpandableCostsTable } from "./budget/ExpandableCostsTable";
-import { BulkGrossMarginUpdate } from "./budget/BulkGrossMarginUpdate";
 import { VersionHistory } from "./budget/VersionHistory";
 import { ipiniumBudget, onepanBudget } from "@/data/budgetData";
 import { BudgetData } from "@/types/budget";
@@ -493,9 +492,6 @@ export const BudgetDashboard = () => {
           </TabsList>
 
           <TabsContent value={view} className="space-y-6 mt-6">
-            {/* Bulk Gross Margin Update */}
-            <BulkGrossMarginUpdate onUpdate={handleBulkGrossMarginUpdate} />
-
             {/* Metrics */}
             <BudgetMetrics budget={budget} />
 
