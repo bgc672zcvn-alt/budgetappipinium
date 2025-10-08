@@ -421,26 +421,26 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                   ))}
                   <TableCell className="text-right min-w-[120px] sticky top-0 z-20 bg-card">Totalt</TableCell>
                 </TableRow>
-                <TableRow className="bg-card">
-                  <TableCell className="sticky left-0 z-30 bg-card font-semibold" colSpan={2}>
+                <TableRow className="bg-card font-semibold">
+                  <TableCell className="sticky left-0 z-30 bg-card">
                     Tina-produkter (sammanställning)
                   </TableCell>
+                  <TableCell>Intäkt</TableCell>
                   {months.map((month) => {
                     const { totalRevenue } = getGroupedTotals("Tina", month);
                     return (
-                      <TableCell key={month} className="text-right font-medium">
+                      <TableCell key={month} className="text-right">
                         {formatCurrency(totalRevenue)}
                       </TableCell>
                     );
                   })}
-                  <TableCell className="text-right font-semibold">
+                  <TableCell className="text-right">
                     {formatCurrency(getGroupYearTotal("Tina").totalRevenue)}
                   </TableCell>
                 </TableRow>
-                <TableRow className="bg-card">
-                  <TableCell className="sticky left-0 z-30 bg-card" colSpan={2}>
-                    <span className="text-sm text-muted-foreground">BV%</span>
-                  </TableCell>
+                <TableRow className="bg-card font-semibold">
+                  <TableCell className="sticky left-0 z-30 bg-card"></TableCell>
+                  <TableCell>BV%</TableCell>
                   {months.map((month) => {
                     const { avgMargin } = getGroupedTotals("Tina", month);
                     return (
@@ -453,10 +453,9 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                     {getGroupYearTotal("Tina").avgMargin.toFixed(1)}%
                   </TableCell>
                 </TableRow>
-                <TableRow className="bg-card border-b">
-                  <TableCell className="sticky left-0 z-30 bg-card" colSpan={2}>
-                    <span className="text-sm text-muted-foreground">Bruttovinst</span>
-                  </TableCell>
+                <TableRow className="bg-card font-semibold border-b-2">
+                  <TableCell className="sticky left-0 z-30 bg-card"></TableCell>
+                  <TableCell>Bruttovinst</TableCell>
                   {months.map((month) => {
                     const { totalGrossProfit } = getGroupedTotals("Tina", month);
                     return (
@@ -465,7 +464,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                       </TableCell>
                     );
                   })}
-                  <TableCell className="text-right text-success font-semibold">
+                  <TableCell className="text-right text-success">
                     {formatCurrency(getGroupYearTotal("Tina").totalGrossProfit)}
                   </TableCell>
                 </TableRow>
@@ -487,26 +486,26 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                   ))}
                   <TableCell className="text-right min-w-[120px] sticky top-0 z-20 bg-card">Totalt</TableCell>
                 </TableRow>
-                <TableRow className="bg-card">
-                  <TableCell className="sticky left-0 z-30 bg-card font-semibold" colSpan={2}>
+                <TableRow className="bg-card font-semibold">
+                  <TableCell className="sticky left-0 z-30 bg-card">
                     Plåtprodukter (sammanställning)
                   </TableCell>
+                  <TableCell>Intäkt</TableCell>
                   {months.map((month) => {
                     const { totalRevenue } = getGroupedTotals("Plåt", month);
                     return (
-                      <TableCell key={month} className="text-right font-medium">
+                      <TableCell key={month} className="text-right">
                         {formatCurrency(totalRevenue)}
                       </TableCell>
                     );
                   })}
-                  <TableCell className="text-right font-semibold">
+                  <TableCell className="text-right">
                     {formatCurrency(getGroupYearTotal("Plåt").totalRevenue)}
                   </TableCell>
                 </TableRow>
-                <TableRow className="bg-card">
-                  <TableCell className="sticky left-0 z-30 bg-card" colSpan={2}>
-                    <span className="text-sm text-muted-foreground">BV%</span>
-                  </TableCell>
+                <TableRow className="bg-card font-semibold">
+                  <TableCell className="sticky left-0 z-30 bg-card"></TableCell>
+                  <TableCell>BV%</TableCell>
                   {months.map((month) => {
                     const { avgMargin } = getGroupedTotals("Plåt", month);
                     return (
@@ -519,10 +518,9 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                     {getGroupYearTotal("Plåt").avgMargin.toFixed(1)}%
                   </TableCell>
                 </TableRow>
-                <TableRow className="bg-card border-b">
-                  <TableCell className="sticky left-0 z-30 bg-card" colSpan={2}>
-                    <span className="text-sm text-muted-foreground">Bruttovinst</span>
-                  </TableCell>
+                <TableRow className="bg-card font-semibold border-b-2">
+                  <TableCell className="sticky left-0 z-30 bg-card"></TableCell>
+                  <TableCell>Bruttovinst</TableCell>
                   {months.map((month) => {
                     const { totalGrossProfit } = getGroupedTotals("Plåt", month);
                     return (
@@ -531,7 +529,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                       </TableCell>
                     );
                   })}
-                  <TableCell className="text-right text-success font-semibold">
+                  <TableCell className="text-right text-success">
                     {formatCurrency(getGroupYearTotal("Plåt").totalGrossProfit)}
                   </TableCell>
                 </TableRow>
@@ -561,23 +559,23 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                     ))}
                     <TableCell className="text-right min-w-[120px] sticky top-0 z-20 bg-card">Totalt</TableCell>
                   </TableRow>
-                  <TableRow className="bg-card">
-                    <TableCell className="sticky left-0 z-30 bg-card font-medium" colSpan={2}>
+                  <TableRow className="bg-card font-medium">
+                    <TableCell className="sticky left-0 z-30 bg-card">
                       {area.name}
                     </TableCell>
+                    <TableCell>Intäkt</TableCell>
                     {area.monthlyData.map((data) => (
                       <TableCell key={data.month} className="text-right">
                         {formatCurrency(data.revenue)}
                       </TableCell>
                     ))}
-                    <TableCell className="text-right font-semibold">
+                    <TableCell className="text-right">
                       {formatCurrency(area.monthlyData.reduce((sum, d) => sum + d.revenue, 0))}
                     </TableCell>
                   </TableRow>
-                  <TableRow className="bg-card">
-                    <TableCell className="sticky left-0 z-30 bg-card" colSpan={2}>
-                      <span className="text-sm text-muted-foreground">BV%</span>
-                    </TableCell>
+                  <TableRow className="bg-card font-medium">
+                    <TableCell className="sticky left-0 z-30 bg-card"></TableCell>
+                    <TableCell>BV%</TableCell>
                     {area.monthlyData.map((data) => (
                       <TableCell key={data.month} className="text-right">
                         {data.contributionMargin.toFixed(1)}%
@@ -590,16 +588,15 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                       ).toFixed(1)}%
                     </TableCell>
                   </TableRow>
-                  <TableRow className="bg-card border-b">
-                    <TableCell className="sticky left-0 z-30 bg-card" colSpan={2}>
-                      <span className="text-sm text-muted-foreground">Bruttovinst</span>
-                    </TableCell>
+                  <TableRow className="bg-card font-medium border-b-2">
+                    <TableCell className="sticky left-0 z-30 bg-card"></TableCell>
+                    <TableCell>Bruttovinst</TableCell>
                     {area.monthlyData.map((data) => (
                       <TableCell key={data.month} className="text-right text-success">
                         {formatCurrency(data.grossProfit)}
                       </TableCell>
                     ))}
-                    <TableCell className="text-right text-success font-semibold">
+                    <TableCell className="text-right text-success">
                       {formatCurrency(area.monthlyData.reduce((sum, d) => sum + d.grossProfit, 0))}
                     </TableCell>
                   </TableRow>
