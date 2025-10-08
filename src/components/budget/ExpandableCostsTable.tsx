@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -115,7 +115,7 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate }: ExpandableCos
           </TableHeader>
           <TableBody>
             {costCategories.map((category) => (
-              <>
+              <Fragment key={category.name}>
                 {/* Category Summary Row */}
                 <TableRow
                   key={category.name}
@@ -186,7 +186,7 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate }: ExpandableCos
                       </TableCell>
                     </TableRow>
                   ))}
-              </>
+              </Fragment>
             ))}
           </TableBody>
         </Table>

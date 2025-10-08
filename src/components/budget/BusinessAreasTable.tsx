@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -113,7 +113,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
           </TableHeader>
           <TableBody>
             {businessAreas.map((area) => (
-              <>
+              <Fragment key={area.name}>
                 {/* Revenue Row */}
                 <TableRow key={`${area.name}-revenue`}>
                   <TableCell className="font-medium sticky left-0 bg-background z-10" rowSpan={3}>
@@ -206,7 +206,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                     {formatCurrency(area.monthlyData.reduce((sum, d) => sum + d.grossProfit, 0))}
                   </TableCell>
                 </TableRow>
-              </>
+              </Fragment>
             ))}
 
             {/* Totals Row */}
