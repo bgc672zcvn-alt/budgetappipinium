@@ -175,12 +175,6 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
             <TableRow className="bg-background">
               <TableHead className="w-[200px] sticky top-0 left-0 bg-background z-40">Affärsområde</TableHead>
               <TableHead className="w-[120px] sticky top-0 z-30 bg-background">Typ</TableHead>
-              {months.map((month) => (
-                <TableHead key={month} className="text-right min-w-[120px] sticky top-0 z-30 bg-background">
-                  {month}
-                </TableHead>
-              ))}
-              <TableHead className="text-right min-w-[120px] font-semibold sticky top-0 z-30 bg-background">Totalt</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -332,8 +326,21 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
               </Fragment>
             ))}
 
+            {/* TOTALT Sticky Month Header */}
+            <TableRow className="bg-card">
+              <TableCell className="sticky top-0 left-0 z-30 bg-card" colSpan={2}>
+                &nbsp;
+              </TableCell>
+              {months.map((m) => (
+                <TableCell key={m} className="text-right min-w-[120px] sticky top-0 z-20 bg-card">
+                  {m}
+                </TableCell>
+              ))}
+              <TableCell className="text-right min-w-[120px] sticky top-0 z-20 bg-card">Totalt</TableCell>
+            </TableRow>
+
             {/* Totals Row */}
-            <TableRow className="bg-muted/50 font-semibold">
+            <TableRow className="bg-muted font-semibold">
               <TableCell className="sticky left-0 bg-muted z-20">TOTALT</TableCell>
               <TableCell>Intäkt</TableCell>
               {months.map((month) => {
@@ -352,7 +359,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                 )}
               </TableCell>
             </TableRow>
-            <TableRow className="bg-muted/50 font-semibold">
+            <TableRow className="bg-muted font-semibold">
               <TableCell className="sticky left-0 bg-muted z-20"></TableCell>
               <TableCell>Snitt BV%</TableCell>
               {months.map((month) => {
@@ -374,7 +381,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                 ).toFixed(1)}%
               </TableCell>
             </TableRow>
-            <TableRow className="bg-muted/50 font-semibold border-b-2">
+            <TableRow className="bg-muted font-semibold border-b-2">
               <TableCell className="sticky left-0 bg-muted z-20"></TableCell>
               <TableCell>Bruttovinst</TableCell>
               {months.map((month) => {
