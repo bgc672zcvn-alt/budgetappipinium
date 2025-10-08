@@ -402,7 +402,19 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
             {/* Tina Group Summary */}
             {getGroupedTotals("Tina", "Jan").count > 0 && (
               <>
-                <TableRow className="bg-accent/10">
+                {/* Tina Sticky Month Header */}
+                <TableRow className="bg-card">
+                  <TableCell className="sticky top-0 left-0 z-30 bg-card" colSpan={2}>
+                    &nbsp;
+                  </TableCell>
+                  {months.map((m) => (
+                    <TableCell key={m} className="text-right min-w-[120px] sticky top-0 z-20 bg-card">
+                      {m}
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-right min-w-[120px] sticky top-0 z-20 bg-card">Totalt</TableCell>
+                </TableRow>
+                <TableRow className="bg-card">
                   <TableCell className="sticky left-0 z-30 bg-card font-semibold" colSpan={2}>
                     Tina-produkter (sammanställning)
                   </TableCell>
@@ -418,7 +430,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                     {formatCurrency(getGroupYearTotal("Tina").totalRevenue)}
                   </TableCell>
                 </TableRow>
-                <TableRow className="bg-accent/10">
+                <TableRow className="bg-card">
                   <TableCell className="sticky left-0 z-30 bg-card" colSpan={2}>
                     <span className="text-sm text-muted-foreground">BV%</span>
                   </TableCell>
@@ -434,7 +446,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                     {getGroupYearTotal("Tina").avgMargin.toFixed(1)}%
                   </TableCell>
                 </TableRow>
-                <TableRow className="bg-accent/10 border-b">
+                <TableRow className="bg-card border-b">
                   <TableCell className="sticky left-0 z-30 bg-card" colSpan={2}>
                     <span className="text-sm text-muted-foreground">Bruttovinst</span>
                   </TableCell>
@@ -456,8 +468,20 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
             {/* Plåt Group Summary */}
             {getGroupedTotals("Plåt", "Jan").count > 0 && (
               <>
-                <TableRow className="bg-primary/5">
-                  <TableCell className="sticky left-0 bg-primary/5 z-10 font-semibold" colSpan={2}>
+                {/* Plåt Sticky Month Header */}
+                <TableRow className="bg-card">
+                  <TableCell className="sticky top-0 left-0 z-30 bg-card" colSpan={2}>
+                    &nbsp;
+                  </TableCell>
+                  {months.map((m) => (
+                    <TableCell key={m} className="text-right min-w-[120px] sticky top-0 z-20 bg-card">
+                      {m}
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-right min-w-[120px] sticky top-0 z-20 bg-card">Totalt</TableCell>
+                </TableRow>
+                <TableRow className="bg-card">
+                  <TableCell className="sticky left-0 z-30 bg-card font-semibold" colSpan={2}>
                     Plåtprodukter (sammanställning)
                   </TableCell>
                   {months.map((month) => {
@@ -472,8 +496,8 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                     {formatCurrency(getGroupYearTotal("Plåt").totalRevenue)}
                   </TableCell>
                 </TableRow>
-                <TableRow className="bg-primary/5">
-                  <TableCell className="sticky left-0 bg-primary/5 z-10" colSpan={2}>
+                <TableRow className="bg-card">
+                  <TableCell className="sticky left-0 z-30 bg-card" colSpan={2}>
                     <span className="text-sm text-muted-foreground">BV%</span>
                   </TableCell>
                   {months.map((month) => {
@@ -488,8 +512,8 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                     {getGroupYearTotal("Plåt").avgMargin.toFixed(1)}%
                   </TableCell>
                 </TableRow>
-                <TableRow className="bg-primary/5 border-b">
-                  <TableCell className="sticky left-0 bg-primary/5 z-10" colSpan={2}>
+                <TableRow className="bg-card border-b">
+                  <TableCell className="sticky left-0 z-30 bg-card" colSpan={2}>
                     <span className="text-sm text-muted-foreground">Bruttovinst</span>
                   </TableCell>
                   {months.map((month) => {
@@ -518,8 +542,20 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
               })
               .map(area => (
                 <Fragment key={`summary-${area.name}`}>
-                  <TableRow className="bg-muted/20">
-                    <TableCell className="sticky left-0 bg-muted/20 z-10 font-medium" colSpan={2}>
+                  {/* Individual area Sticky Month Header */}
+                  <TableRow className="bg-card">
+                    <TableCell className="sticky top-0 left-0 z-30 bg-card" colSpan={2}>
+                      &nbsp;
+                    </TableCell>
+                    {months.map((m) => (
+                      <TableCell key={m} className="text-right min-w-[120px] sticky top-0 z-20 bg-card">
+                        {m}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right min-w-[120px] sticky top-0 z-20 bg-card">Totalt</TableCell>
+                  </TableRow>
+                  <TableRow className="bg-card">
+                    <TableCell className="sticky left-0 z-30 bg-card font-medium" colSpan={2}>
                       {area.name}
                     </TableCell>
                     {area.monthlyData.map((data) => (
@@ -531,8 +567,8 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                       {formatCurrency(area.monthlyData.reduce((sum, d) => sum + d.revenue, 0))}
                     </TableCell>
                   </TableRow>
-                  <TableRow className="bg-muted/20">
-                    <TableCell className="sticky left-0 bg-muted/20 z-10" colSpan={2}>
+                  <TableRow className="bg-card">
+                    <TableCell className="sticky left-0 z-30 bg-card" colSpan={2}>
                       <span className="text-sm text-muted-foreground">BV%</span>
                     </TableCell>
                     {area.monthlyData.map((data) => (
@@ -547,8 +583,8 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                       ).toFixed(1)}%
                     </TableCell>
                   </TableRow>
-                  <TableRow className="bg-muted/20 border-b">
-                    <TableCell className="sticky left-0 bg-muted/20 z-10" colSpan={2}>
+                  <TableRow className="bg-card border-b">
+                    <TableCell className="sticky left-0 z-30 bg-card" colSpan={2}>
                       <span className="text-sm text-muted-foreground">Bruttovinst</span>
                     </TableCell>
                     {area.monthlyData.map((data) => (
