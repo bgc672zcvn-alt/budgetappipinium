@@ -22,13 +22,57 @@ export const BudgetDashboard = () => {
   const budget = budgetData[view];
 
   const handleBusinessAreasUpdate = (updatedAreas: BudgetData["businessAreas"]) => {
-    setBudgetData(prev => ({
-      ...prev,
-      [view]: {
-        ...prev[view],
-        businessAreas: updatedAreas,
-      },
-    }));
+    setBudgetData((prev) => {
+      const current = prev[view];
+      const prevMonthly = current.monthlyData;
+
+      const recomputed = prevMonthly.map((m) => {
+        const totalRevenue = (updatedAreas || []).reduce((sum, area) => {
+          const d = area.monthlyData.find((d) => d.month === m.month);
+          return sum + (d?.revenue ?? 0);
+        }, 0);
+        const totalGrossProfit = (updatedAreas || []).reduce((sum, area) => {
+          const d = area.monthlyData.find((d) => d.month === m.month);
+          return sum + (d?.grossProfit ?? 0);
+        }, 0);
+
+        const revenue = Math.round(totalRevenue);
+        const grossProfit = Math.round(totalGrossProfit);
+        const cogs = Math.max(0, revenue - grossProfit);
+        const grossMargin = revenue > 0 ? Math.round(((grossProfit / revenue) * 1000)) / 10 : 0;
+
+        // Behåll OPEX, avskrivningar och finansiella kostnader oförändrade (som absoluta tal)
+        const { personnel, marketing, office, otherOpex, depreciation, financialCosts } = m;
+        const totalOpex = personnel + marketing + office + otherOpex;
+        const ebit = grossProfit - totalOpex - depreciation;
+        const ebitMargin = revenue > 0 ? Math.round(((ebit / revenue) * 1000)) / 10 : 0;
+        const resultAfterFinancial = ebit + financialCosts;
+
+        return {
+          ...m,
+          revenue,
+          cogs,
+          grossProfit,
+          grossMargin,
+          totalOpex,
+          ebit,
+          ebitMargin,
+          resultAfterFinancial,
+        };
+      });
+
+      const newTotalRevenue = recomputed.reduce((s, md) => s + md.revenue, 0);
+
+      return {
+        ...prev,
+        [view]: {
+          ...current,
+          monthlyData: recomputed,
+          totalRevenue: newTotalRevenue,
+          businessAreas: updatedAreas,
+        },
+      };
+    });
   };
   const handleCostCategoriesUpdate = (updatedCategories: BudgetData["costCategories"]) => {
     setBudgetData(prev => ({
