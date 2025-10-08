@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { BudgetMetrics } from "./budget/BudgetMetrics";
 import { BudgetChart } from "./budget/BudgetChart";
 import { BudgetTable } from "./budget/BudgetTable";
@@ -10,6 +12,8 @@ import { ipiniumBudget, onepanBudget } from "@/data/budgetData";
 import { BudgetData } from "@/types/budget";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { LogOut } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
 
 type CompanyView = "ipinium" | "onepan" | "combined";
 
@@ -66,8 +70,10 @@ const computeCombined = (ip: BudgetData, op: BudgetData): BudgetData => {
 };
 
 export const BudgetDashboard = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [view, setView] = useState<CompanyView>("ipinium");
+  const [user, setUser] = useState<User | null>(null);
   const [budgetData, setBudgetData] = useState<Record<CompanyView, BudgetData>>({
     ipinium: ipiniumBudget,
     onepan: onepanBudget,
@@ -76,6 +82,30 @@ export const BudgetDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const budget = budgetData[view];
+
+  // Check auth and redirect if not logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/auth");
+        return;
+      }
+      setUser(session.user);
+    };
+
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   // Ladda data från backend vid start
   useEffect(() => {
@@ -136,6 +166,11 @@ export const BudgetDashboard = () => {
 
     saveBudgets();
   }, [budgetData, isLoading, toast]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
 
   const handleBusinessAreasUpdate = (updatedAreas: BudgetData["businessAreas"]) => {
     setBudgetData((prev) => {
@@ -276,6 +311,10 @@ export const BudgetDashboard = () => {
                 Finansiella prognoser och intäktsuppdelning
               </p>
             </div>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Logga ut
+            </Button>
           </div>
         </div>
 
