@@ -35,26 +35,26 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
           <TableHeader>
             <TableRow className="bg-background">
               <TableHead className="font-semibold sticky top-0 left-0 z-40 bg-background">Month</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 bg-background">Revenue</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 bg-background">COGS</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 bg-background">Gross Profit</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 bg-background">GM %</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 bg-background">Personnel</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 bg-background">Marketing</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 bg-background">Office</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 bg-background">Other OPEX</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 bg-background">Total OPEX</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 bg-background">D&A</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 bg-background">EBIT</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 bg-background">EBIT %</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 bg-background">Financial</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 bg-background">Result</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Revenue</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">COGS</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Gross Profit</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">GM %</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Personnel</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Marketing</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Office</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Other OPEX</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Total OPEX</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">D&A</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">EBIT</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">EBIT %</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Financial</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Result</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {budget.monthlyData.map((month) => (
               <TableRow key={month.month} className="hover:bg-muted/30">
-                <TableCell className="font-medium sticky left-0 bg-background z-10">{month.month}</TableCell>
+                <TableCell className="font-medium sticky left-0 bg-background z-30">{month.month}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <span className="font-semibold">{formatCurrency(month.revenue)}</span>
@@ -198,7 +198,7 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
               </TableRow>
             ))}
             <TableRow className="bg-muted/50 font-bold border-t-2">
-              <TableCell className="sticky left-0 bg-muted/50 z-10">Total</TableCell>
+              <TableCell className="sticky left-0 bg-muted z-20">Total</TableCell>
               <TableCell className="text-right">
                 {formatCurrency(
                   budget.monthlyData.reduce((sum, m) => sum + m.revenue, 0)

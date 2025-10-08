@@ -108,11 +108,11 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate, company }: Expa
             <TableRow className="bg-background">
               <TableHead className="w-[250px] sticky top-0 left-0 bg-background z-40">Kategori / Konto</TableHead>
               {months.map((month) => (
-                <TableHead key={month} className="text-right min-w-[120px] sticky top-0 bg-background">
+                <TableHead key={month} className="text-right min-w-[120px] sticky top-0 z-30 bg-background">
                   {month}
                 </TableHead>
               ))}
-              <TableHead className="text-right min-w-[120px] font-semibold sticky top-0 bg-background">Totalt</TableHead>
+              <TableHead className="text-right min-w-[120px] font-semibold sticky top-0 z-30 bg-background">Totalt</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -124,7 +124,7 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate, company }: Expa
                   className="bg-muted/30 font-semibold cursor-pointer hover:bg-muted/50"
                   onClick={() => toggleCategory(category.name)}
                 >
-                  <TableCell className="sticky left-0 bg-muted/30 z-10">
+                  <TableCell className="sticky left-0 bg-muted z-20">
                     <div className="flex items-center gap-2">
                       {expandedCategories.has(category.name) ? (
                         <ChevronDown className="h-4 w-4" />
@@ -151,7 +151,7 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate, company }: Expa
                 {expandedCategories.has(category.name) &&
                   category.accounts.map((account) => (
                     <TableRow key={`${category.name}-${account.name}`} className="bg-background">
-                      <TableCell className="pl-10 sticky left-0 bg-background z-10">
+                      <TableCell className="pl-10 sticky left-0 bg-background z-20">
                         {account.name}
                       </TableCell>
                       {account.monthlyData.map((data) => (
