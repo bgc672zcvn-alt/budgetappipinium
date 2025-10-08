@@ -130,12 +130,22 @@ export const BudgetDashboard = () => {
           });
 
           // Merga sparad data med default-budgets för att säkerställa nya fält finns
+          // ALLTID använd businessAreas och costCategories från default för att få senaste strukturen
           const ip = loaded['ipinium ab'] 
-            ? { ...ipiniumBudget, ...loaded['ipinium ab'], costCategories: loaded['ipinium ab'].costCategories || ipiniumBudget.costCategories }
+            ? { 
+                ...ipiniumBudget, 
+                ...loaded['ipinium ab'], 
+                businessAreas: ipiniumBudget.businessAreas, // Använd alltid nya strukturen
+                costCategories: loaded['ipinium ab'].costCategories || ipiniumBudget.costCategories 
+              }
             : ipiniumBudget;
           
           const op = loaded['onepan'] 
-            ? { ...onepanBudget, ...loaded['onepan'], costCategories: loaded['onepan'].costCategories || onepanBudget.costCategories }
+            ? { 
+                ...onepanBudget, 
+                ...loaded['onepan'], 
+                costCategories: loaded['onepan'].costCategories || onepanBudget.costCategories 
+              }
             : onepanBudget;
 
           const nip = normalizeTotals(ip);
