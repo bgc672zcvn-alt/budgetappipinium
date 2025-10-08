@@ -26,6 +26,17 @@ export const BudgetDashboard = () => {
       const current = prev[view];
       const prevMonthly = current.monthlyData;
 
+      // Hämta befintliga affärsområden och MERGA uppdateringar istället för att ersätta allt
+      const existingAreas = current.businessAreas || [];
+      const updatesMap = new Map((updatedAreas || []).map((a) => [a.name, a]));
+
+      const mergedAreas = [
+        ...existingAreas.map((area) => updatesMap.get(area.name) || area),
+        ...[...updatesMap.keys()]
+          .filter((name) => !existingAreas.some((a) => a.name === name))
+          .map((name) => updatesMap.get(name)!)
+      ];
+
       const norm = (s: string) => s.trim().toLowerCase().slice(0, 3);
 
       const recomputed = prevMonthly.map((m) => {
@@ -33,7 +44,7 @@ export const BudgetDashboard = () => {
         let totalRevenue = 0;
         let totalGrossProfit = 0;
 
-        (updatedAreas || []).forEach((area) => {
+        mergedAreas.forEach((area) => {
           const d = area.monthlyData.find((d) => norm(d.month) === norm(m.month));
           if (d) {
             anyMatch = true;
@@ -75,7 +86,7 @@ export const BudgetDashboard = () => {
           ...current,
           monthlyData: recomputed,
           totalRevenue: newTotalRevenue,
-          businessAreas: updatedAreas,
+          businessAreas: mergedAreas,
         },
       };
     });
