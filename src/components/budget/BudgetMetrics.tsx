@@ -15,6 +15,11 @@ export const BudgetMetrics = ({ budget }: BudgetMetricsProps) => {
     }).format(value);
   };
 
+  const totalEbitda = budget.monthlyData.reduce((sum, m) => sum + m.ebitda, 0);
+  const totalEbit = budget.monthlyData.reduce((sum, m) => sum + m.ebit, 0);
+  const ebitdaMargin = (totalEbitda / budget.totalRevenue) * 100;
+  const ebitMargin = (totalEbit / budget.totalRevenue) * 100;
+
   const metrics = [
     {
       title: "Total Revenue 2026",
@@ -23,21 +28,23 @@ export const BudgetMetrics = ({ budget }: BudgetMetricsProps) => {
       color: "text-primary",
     },
     {
-      title: "Average Monthly",
-      value: formatCurrency(budget.totalRevenue / 12),
+      title: "EBITDA",
+      value: formatCurrency(totalEbitda),
+      subtitle: `${ebitdaMargin.toFixed(1)}% margin`,
       icon: TrendingUp,
       color: "text-accent",
+    },
+    {
+      title: "EBIT",
+      value: formatCurrency(totalEbit),
+      subtitle: `${ebitMargin.toFixed(1)}% margin`,
+      icon: Target,
+      color: "text-success",
     },
     {
       title: "Growth Target",
       value: budget.growthRate,
       icon: Percent,
-      color: "text-success",
-    },
-    {
-      title: "Revenue Goal",
-      value: formatCurrency(budget.targetRevenue),
-      icon: Target,
       color: "text-warning",
     },
   ];
@@ -52,6 +59,9 @@ export const BudgetMetrics = ({ budget }: BudgetMetricsProps) => {
                 {metric.title}
               </p>
               <p className="text-2xl font-bold text-foreground">{metric.value}</p>
+              {"subtitle" in metric && (
+                <p className="text-xs text-muted-foreground">{metric.subtitle}</p>
+              )}
             </div>
             <metric.icon className={`h-8 w-8 ${metric.color}`} />
           </div>

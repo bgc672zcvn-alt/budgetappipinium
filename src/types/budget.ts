@@ -1,9 +1,19 @@
 export interface MonthlyData {
   month: string;
   revenue: number;
-  costs: number;
+  cogs: number;
   grossProfit: number;
-  margin: number;
+  grossMargin: number;
+  personnel: number;
+  marketing: number;
+  office: number;
+  otherOpex: number;
+  totalOpex: number;
+  ebitda: number;
+  ebitdaMargin: number;
+  depreciation: number;
+  ebit: number;
+  ebitMargin: number;
 }
 
 export interface BudgetData {
