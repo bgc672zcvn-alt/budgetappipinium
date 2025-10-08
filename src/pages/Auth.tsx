@@ -19,12 +19,24 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [accessCode, setAccessCode] = useState("");
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
+      // Validate access code
+      if (accessCode !== "iPi2018!") {
+        toast({
+          title: "Fel åtkomstkod",
+          description: "Du måste ange rätt åtkomstkod för att skapa ett konto.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       // Validate inputs
       emailSchema.parse(email);
       passwordSchema.parse(password);
@@ -179,6 +191,18 @@ const Auth = () => {
 
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-access-code">Åtkomstkod</Label>
+                  <Input
+                    id="signup-access-code"
+                    type="password"
+                    placeholder="Ange åtkomstkod"
+                    value={accessCode}
+                    onChange={(e) => setAccessCode(e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-name">Namn (valfritt)</Label>
                   <Input
