@@ -45,11 +45,15 @@ export const BudgetDashboard = () => {
     <div className="min-h-screen bg-background p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
         {/* Header */}
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold text-foreground">Budget 2026</h1>
-          <p className="text-muted-foreground">
-            Financial projections and revenue breakdown
-          </p>
+        <div className="space-y-4 mb-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-foreground">Budget 2026</h1>
+              <p className="text-muted-foreground mt-2">
+                Finansiella prognoser och intäktsuppdelning
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Company Selector */}
