@@ -9,7 +9,7 @@ interface PasswordProtectionProps {
   children: React.ReactNode;
 }
 
-const DEFAULT_PASSWORD = "budget2025";
+const DEFAULT_PASSWORD = "iPi2018!";
 
 export const PasswordProtection = ({ children }: PasswordProtectionProps) => {
   const [password, setPassword] = useState("");
@@ -67,7 +67,7 @@ export const PasswordProtection = ({ children }: PasswordProtectionProps) => {
             </Button>
           </form>
           <p className="text-xs text-muted-foreground text-center mt-4">
-            Standardlösenord: budget2025
+            Kontakta administratören för lösenord
           </p>
         </CardContent>
       </Card>
