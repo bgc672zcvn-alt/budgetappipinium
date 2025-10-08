@@ -91,6 +91,57 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
     return { totalRevenue, totalGrossProfit, avgMargin };
   };
 
+  const getGroupedTotals = (groupName: string, month: string) => {
+    const filteredAreas = businessAreas.filter(area => {
+      if (groupName === "Tina") {
+        return area.name.toLowerCase().includes("tina");
+      } else if (groupName === "Plåt") {
+        return area.name.toLowerCase().includes("plåt");
+      } else {
+        // Övriga = not Tina and not Plåt
+        return !area.name.toLowerCase().includes("tina") && !area.name.toLowerCase().includes("plåt");
+      }
+    });
+
+    const totalRevenue = filteredAreas.reduce((sum, area) => {
+      const monthData = area.monthlyData.find(d => d.month === month);
+      return sum + (monthData?.revenue || 0);
+    }, 0);
+
+    const totalGrossProfit = filteredAreas.reduce((sum, area) => {
+      const monthData = area.monthlyData.find(d => d.month === month);
+      return sum + (monthData?.grossProfit || 0);
+    }, 0);
+
+    const avgMargin = totalRevenue > 0 ? (totalGrossProfit / totalRevenue) * 100 : 0;
+
+    return { totalRevenue, totalGrossProfit, avgMargin, count: filteredAreas.length };
+  };
+
+  const getGroupYearTotal = (groupName: string) => {
+    const filteredAreas = businessAreas.filter(area => {
+      if (groupName === "Tina") {
+        return area.name.toLowerCase().includes("tina");
+      } else if (groupName === "Plåt") {
+        return area.name.toLowerCase().includes("plåt");
+      } else {
+        return !area.name.toLowerCase().includes("tina") && !area.name.toLowerCase().includes("plåt");
+      }
+    });
+
+    const totalRevenue = filteredAreas.reduce((sum, area) =>
+      sum + area.monthlyData.reduce((s, d) => s + d.revenue, 0), 0
+    );
+
+    const totalGrossProfit = filteredAreas.reduce((sum, area) =>
+      sum + area.monthlyData.reduce((s, d) => s + d.grossProfit, 0), 0
+    );
+
+    const avgMargin = totalRevenue > 0 ? (totalGrossProfit / totalRevenue) * 100 : 0;
+
+    return { totalRevenue, totalGrossProfit, avgMargin };
+  };
+
   return (
     <Card className="p-6">
       <h3 className="text-xl font-semibold mb-4">Affärsområden - Detaljerad Budget</h3>
@@ -279,6 +330,170 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                 )}
               </TableCell>
             </TableRow>
+
+            {/* Grouped Summaries */}
+            <TableRow className="h-4 bg-background">
+              <TableCell colSpan={14} className="p-0"></TableCell>
+            </TableRow>
+
+            {/* Tina Group Summary */}
+            {getGroupedTotals("Tina", "Jan").count > 0 && (
+              <>
+                <TableRow className="bg-accent/10">
+                  <TableCell className="sticky left-0 bg-accent/10 z-10 font-semibold" colSpan={2}>
+                    Tina-produkter (sammanställning)
+                  </TableCell>
+                  {months.map((month) => {
+                    const { totalRevenue } = getGroupedTotals("Tina", month);
+                    return (
+                      <TableCell key={month} className="text-right font-medium">
+                        {formatCurrency(totalRevenue)}
+                      </TableCell>
+                    );
+                  })}
+                  <TableCell className="text-right font-semibold">
+                    {formatCurrency(getGroupYearTotal("Tina").totalRevenue)}
+                  </TableCell>
+                </TableRow>
+                <TableRow className="bg-accent/10">
+                  <TableCell className="sticky left-0 bg-accent/10 z-10" colSpan={2}>
+                    <span className="text-sm text-muted-foreground">BV%</span>
+                  </TableCell>
+                  {months.map((month) => {
+                    const { avgMargin } = getGroupedTotals("Tina", month);
+                    return (
+                      <TableCell key={month} className="text-right">
+                        {avgMargin.toFixed(1)}%
+                      </TableCell>
+                    );
+                  })}
+                  <TableCell className="text-right">
+                    {getGroupYearTotal("Tina").avgMargin.toFixed(1)}%
+                  </TableCell>
+                </TableRow>
+                <TableRow className="bg-accent/10 border-b">
+                  <TableCell className="sticky left-0 bg-accent/10 z-10" colSpan={2}>
+                    <span className="text-sm text-muted-foreground">Bruttovinst</span>
+                  </TableCell>
+                  {months.map((month) => {
+                    const { totalGrossProfit } = getGroupedTotals("Tina", month);
+                    return (
+                      <TableCell key={month} className="text-right text-success">
+                        {formatCurrency(totalGrossProfit)}
+                      </TableCell>
+                    );
+                  })}
+                  <TableCell className="text-right text-success font-semibold">
+                    {formatCurrency(getGroupYearTotal("Tina").totalGrossProfit)}
+                  </TableCell>
+                </TableRow>
+              </>
+            )}
+
+            {/* Plåt Group Summary */}
+            {getGroupedTotals("Plåt", "Jan").count > 0 && (
+              <>
+                <TableRow className="bg-primary/5">
+                  <TableCell className="sticky left-0 bg-primary/5 z-10 font-semibold" colSpan={2}>
+                    Plåtprodukter (sammanställning)
+                  </TableCell>
+                  {months.map((month) => {
+                    const { totalRevenue } = getGroupedTotals("Plåt", month);
+                    return (
+                      <TableCell key={month} className="text-right font-medium">
+                        {formatCurrency(totalRevenue)}
+                      </TableCell>
+                    );
+                  })}
+                  <TableCell className="text-right font-semibold">
+                    {formatCurrency(getGroupYearTotal("Plåt").totalRevenue)}
+                  </TableCell>
+                </TableRow>
+                <TableRow className="bg-primary/5">
+                  <TableCell className="sticky left-0 bg-primary/5 z-10" colSpan={2}>
+                    <span className="text-sm text-muted-foreground">BV%</span>
+                  </TableCell>
+                  {months.map((month) => {
+                    const { avgMargin } = getGroupedTotals("Plåt", month);
+                    return (
+                      <TableCell key={month} className="text-right">
+                        {avgMargin.toFixed(1)}%
+                      </TableCell>
+                    );
+                  })}
+                  <TableCell className="text-right">
+                    {getGroupYearTotal("Plåt").avgMargin.toFixed(1)}%
+                  </TableCell>
+                </TableRow>
+                <TableRow className="bg-primary/5 border-b">
+                  <TableCell className="sticky left-0 bg-primary/5 z-10" colSpan={2}>
+                    <span className="text-sm text-muted-foreground">Bruttovinst</span>
+                  </TableCell>
+                  {months.map((month) => {
+                    const { totalGrossProfit } = getGroupedTotals("Plåt", month);
+                    return (
+                      <TableCell key={month} className="text-right text-success">
+                        {formatCurrency(totalGrossProfit)}
+                      </TableCell>
+                    );
+                  })}
+                  <TableCell className="text-right text-success font-semibold">
+                    {formatCurrency(getGroupYearTotal("Plåt").totalGrossProfit)}
+                  </TableCell>
+                </TableRow>
+              </>
+            )}
+
+            {/* Övriga products - show individually */}
+            {businessAreas
+              .filter(area => !area.name.toLowerCase().includes("tina") && !area.name.toLowerCase().includes("plåt"))
+              .map(area => (
+                <Fragment key={`summary-${area.name}`}>
+                  <TableRow className="bg-muted/20">
+                    <TableCell className="sticky left-0 bg-muted/20 z-10 font-medium" colSpan={2}>
+                      {area.name}
+                    </TableCell>
+                    {area.monthlyData.map((data) => (
+                      <TableCell key={data.month} className="text-right">
+                        {formatCurrency(data.revenue)}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right font-semibold">
+                      {formatCurrency(area.monthlyData.reduce((sum, d) => sum + d.revenue, 0))}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow className="bg-muted/20">
+                    <TableCell className="sticky left-0 bg-muted/20 z-10" colSpan={2}>
+                      <span className="text-sm text-muted-foreground">BV%</span>
+                    </TableCell>
+                    {area.monthlyData.map((data) => (
+                      <TableCell key={data.month} className="text-right">
+                        {data.contributionMargin.toFixed(1)}%
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right">
+                      {(
+                        area.monthlyData.reduce((sum, d) => sum + d.grossProfit, 0) /
+                        area.monthlyData.reduce((sum, d) => sum + d.revenue, 0) * 100
+                      ).toFixed(1)}%
+                    </TableCell>
+                  </TableRow>
+                  <TableRow className="bg-muted/20 border-b">
+                    <TableCell className="sticky left-0 bg-muted/20 z-10" colSpan={2}>
+                      <span className="text-sm text-muted-foreground">Bruttovinst</span>
+                    </TableCell>
+                    {area.monthlyData.map((data) => (
+                      <TableCell key={data.month} className="text-right text-success">
+                        {formatCurrency(data.grossProfit)}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right text-success font-semibold">
+                      {formatCurrency(area.monthlyData.reduce((sum, d) => sum + d.grossProfit, 0))}
+                    </TableCell>
+                  </TableRow>
+                </Fragment>
+              ))
+            }
           </TableBody>
         </Table>
       </div>
