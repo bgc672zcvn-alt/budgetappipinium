@@ -6,9 +6,10 @@ const months = [
 ];
 
 // Ipinium Budget - 30M SEK target for 2026
-// Based on 2025 actuals: 14.8M in 9 months (~19.7M annualized)
+// Adjusted to achieve 8% result margin (2.4M SEK result)
 const generateIpiniumMonthly = (): MonthlyData[] => {
   const targetRevenue = 30000000; // 30M SEK
+  const targetResultMargin = 0.08; // 8% result margin
   const avgMonthly = targetRevenue / 12;
   
   return months.map((month, index) => {
@@ -20,23 +21,23 @@ const generateIpiniumMonthly = (): MonthlyData[] => {
       0.95;
     
     const revenue = avgMonthly * seasonalFactor;
-    const cogs = revenue * 0.58; // Based on 2025: 8.6M/14.8M = 58%
+    const cogs = revenue * 0.50; // Adjusted to 50% COGS
     const grossProfit = revenue - cogs;
     const grossMargin = (grossProfit / revenue) * 100;
     
-    // Operating expenses based on 2025 actuals
-    const personnel = revenue * 0.19; // 19% (2.9M/14.8M in 2025)
-    const marketing = revenue * 0.05; // 5% realistic marketing
-    const office = revenue * 0.15; // 15% (3.0M/14.8M external costs in 2025)
+    // Operating expenses adjusted for 8% target
+    const personnel = revenue * 0.19; // 19% personnel
+    const marketing = revenue * 0.05; // 5% marketing
+    const office = revenue * 0.14; // 14% office
     const otherOpex = revenue * 0.02; // 2% other costs
     const totalOpex = personnel + marketing + office + otherOpex;
     
-    const depreciation = revenue * 0.006; // 0.6% (94k/14.8M in 2025)
+    const depreciation = revenue * 0.006; // 0.6% depreciation
     const operatingResult = grossProfit - totalOpex;
     const ebit = operatingResult - depreciation;
     const ebitMargin = (ebit / revenue) * 100;
     
-    const financialCosts = revenue * -0.016; // -1.6% (238k/14.8M in 2025)
+    const financialCosts = revenue * -0.014; // -1.4% financial costs
     const resultAfterFinancial = ebit + financialCosts;
     
     return {
@@ -60,7 +61,7 @@ const generateIpiniumMonthly = (): MonthlyData[] => {
 };
 
 // OnePan Budget - 8M SEK target for 2026
-// Based on 2025 actuals: 1.7M in 9 months (~2.3M annualized)
+// Adjusted to achieve break-even (+-0 result)
 const generateOnepanMonthly = (): MonthlyData[] => {
   const targetRevenue = 8000000; // 8M SEK
   const avgMonthly = targetRevenue / 12;
@@ -75,23 +76,23 @@ const generateOnepanMonthly = (): MonthlyData[] => {
       0.90;
     
     const revenue = avgMonthly * seasonalFactor;
-    const cogs = revenue * 0.64; // Based on 2025: 1.1M/1.7M = 64%
+    const cogs = revenue * 0.45; // Adjusted to 45% COGS for better margins
     const grossProfit = revenue - cogs;
     const grossMargin = (grossProfit / revenue) * 100;
     
-    // Operating expenses based on 2025 actuals
-    const personnel = revenue * 0.08; // 8% (630k/1.7M effective after adjustments)
-    const marketing = revenue * 0.30; // 30% high marketing (480k/1.7M in 2025)
-    const office = revenue * 0.20; // 20% (1.9M-480k external/1.7M)
+    // Operating expenses adjusted for break-even target
+    const personnel = revenue * 0.12; // 12% personnel
+    const marketing = revenue * 0.25; // 25% marketing
+    const office = revenue * 0.12; // 12% office
     const otherOpex = revenue * 0.02; // 2% other
     const totalOpex = personnel + marketing + office + otherOpex;
     
-    const depreciation = revenue * 0.29; // 29% (494k/1.7M in 2025 - high due to startup phase)
+    const depreciation = revenue * 0.03; // 3% depreciation (reduced as company matures)
     const operatingResult = grossProfit - totalOpex;
     const ebit = operatingResult - depreciation;
     const ebitMargin = (ebit / revenue) * 100;
     
-    const financialCosts = revenue * -0.11; // -11% (193k/1.7M in 2025)
+    const financialCosts = revenue * -0.01; // -1% financial costs (improved terms)
     const resultAfterFinancial = ebit + financialCosts;
     
     return {
