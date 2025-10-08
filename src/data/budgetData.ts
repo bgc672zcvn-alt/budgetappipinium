@@ -67,41 +67,45 @@ const generateIpiniumMonthly = (): MonthlyData[] => {
 // Current: Significant losses -2.4M ytd, 42% gross margin
 const generateOnepanMonthly = (): MonthlyData[] => {
   const targetRevenue = 7000000; // 7M SEK (ambitious growth target)
-  const avgMonthly = targetRevenue / 12;
-  
-  return months.map((month, index) => {
-    // Seasonal pattern based on actuals (weak summer, aug = 184k)
-    const seasonalFactor = 
-      index === 11 ? 1.40 : // December: stronger
-      index === 10 ? 1.25 : // November: growth
-      index === 9 ? 1.20 : // October: growth
-      index === 6 ? 0.30 : // July: very weak
-      index === 5 ? 0.70 : // June: weak
-      index === 7 ? 0.55 : // August: 184k actual (very low)
-      index === 2 ? 1.35 : // March: peak
-      index <= 1 ? 0.90 : // Jan-Feb: startup phase
-      0.95;
-    
-    const revenue = avgMonthly * seasonalFactor;
-    const cogs = revenue * 0.57; // 57% COGS (43% gross margin, close to actual 42.9%)
+
+  // Build seasonal factors array first and normalize so the rounded sum ~ targetRevenue
+  const factors = months.map((_, index) => (
+    index === 11 ? 1.40 : // December: stronger
+    index === 10 ? 1.25 : // November: growth
+    index === 9 ? 1.20 : // October: growth
+    index === 6 ? 0.30 : // July: very weak
+    index === 5 ? 0.70 : // June: weak
+    index === 7 ? 0.55 : // August: 184k actual (very low)
+    index === 2 ? 1.35 : // March: peak
+    index <= 1 ? 0.90 : // Jan-Feb: startup phase
+    0.95
+  ));
+
+  const sumFactors = factors.reduce((a, b) => a + b, 0);
+  const base = targetRevenue / sumFactors;
+
+  const result: MonthlyData[] = months.map((month, index) => {
+    const seasonalFactor = factors[index];
+    const revenue = base * seasonalFactor;
+    const cogs = revenue * 0.57; // 57% COGS (43% gross margin)
     const grossProfit = revenue - cogs;
     const grossMargin = (grossProfit / revenue) * 100;
-    
+
     // Operating expenses - optimized for -800k annual result
-    const personnel = revenue * 0.15; // 15% personnel
-    const marketing = revenue * 0.22; // 22% marketing (reduced for profitability)
-    const office = revenue * 0.10; // 10% office & facilities (optimized)
-    const otherOpex = revenue * 0.024; // 2.4% other
+    const personnel = revenue * 0.15;
+    const marketing = revenue * 0.22;
+    const office = revenue * 0.10;
+    const otherOpex = revenue * 0.024;
     const totalOpex = personnel + marketing + office + otherOpex;
-    
-    const depreciation = revenue * 0.04; // 4% depreciation
+
+    const depreciation = revenue * 0.04;
     const operatingResult = grossProfit - totalOpex;
     const ebit = operatingResult - depreciation;
     const ebitMargin = (ebit / revenue) * 100;
-    
-    const financialCosts = revenue * -0.01; // -1% financial costs (improved terms)
+
+    const financialCosts = revenue * -0.01;
     const resultAfterFinancial = ebit + financialCosts;
-    
+
     return {
       month,
       revenue: Math.round(revenue),
@@ -120,6 +124,53 @@ const generateOnepanMonthly = (): MonthlyData[] => {
       resultAfterFinancial: Math.round(resultAfterFinancial),
     };
   });
+
+  // Adjust rounding drift on the last month to ensure the annual revenue equals the target exactly
+  const roundedSum = result.reduce((s, m) => s + m.revenue, 0);
+  const delta = targetRevenue - roundedSum;
+  if (delta !== 0) {
+    const last = result[result.length - 1];
+    const adjustedRevenue = last.revenue + delta;
+
+    // Recompute dependent metrics based on the adjusted revenue using the same percentages
+    const revenue = adjustedRevenue;
+    const cogs = Math.round(revenue * 0.57);
+    const grossProfit = revenue - cogs;
+    const grossMargin = Math.round(((grossProfit / revenue) * 100) * 10) / 10;
+
+    const personnel = Math.round(revenue * 0.15);
+    const marketing = Math.round(revenue * 0.22);
+    const office = Math.round(revenue * 0.10);
+    const otherOpex = Math.round(revenue * 0.024);
+    const totalOpex = personnel + marketing + office + otherOpex;
+
+    const depreciation = Math.round(revenue * 0.04);
+    const ebit = (grossProfit - totalOpex - depreciation);
+    const ebitMargin = Math.round(((ebit / revenue) * 100) * 10) / 10;
+
+    const financialCosts = Math.round(revenue * -0.01);
+    const resultAfterFinancial = ebit + financialCosts;
+
+    result[result.length - 1] = {
+      ...last,
+      revenue,
+      cogs,
+      grossProfit,
+      grossMargin,
+      personnel,
+      marketing,
+      office,
+      otherOpex,
+      totalOpex,
+      depreciation,
+      ebit,
+      ebitMargin,
+      financialCosts,
+      resultAfterFinancial,
+    } as MonthlyData;
+  }
+
+  return result;
 };
 
 // Ipinium Business Areas - Growth focused on Tina products
