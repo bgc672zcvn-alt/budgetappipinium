@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,11 +8,14 @@ import { BudgetChart } from "./budget/BudgetChart";
 import { BudgetTable } from "./budget/BudgetTable";
 import { BusinessAreasTable } from "./budget/BusinessAreasTable";
 import { ExpandableCostsTable } from "./budget/ExpandableCostsTable";
+import { BulkGrossMarginUpdate } from "./budget/BulkGrossMarginUpdate";
+import { VersionHistory } from "./budget/VersionHistory";
 import { ipiniumBudget, onepanBudget } from "@/data/budgetData";
 import { BudgetData } from "@/types/budget";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut } from "lucide-react";
+import { useBudgetHistory } from "@/hooks/useBudgetHistory";
+import { LogOut, Undo2 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import ipiniumLogo from "@/assets/ipinium-logo.jpg";
 import onepanLogo from "@/assets/onepan-logo.png";
@@ -74,6 +77,7 @@ const computeCombined = (ip: BudgetData, op: BudgetData): BudgetData => {
 export const BudgetDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { saveVersion, checkAdminStatus } = useBudgetHistory();
   const [view, setView] = useState<CompanyView>("ipinium");
   const [user, setUser] = useState<User | null>(null);
   const [budgetData, setBudgetData] = useState<Record<CompanyView, BudgetData>>({
@@ -81,6 +85,7 @@ export const BudgetDashboard = () => {
     onepan: normalizeTotals(onepanBudget),
     combined: computeCombined(normalizeTotals(ipiniumBudget), normalizeTotals(onepanBudget)),
   });
+  const [previousState, setPreviousState] = useState<Record<CompanyView, BudgetData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const budget = budgetData[view];
@@ -355,6 +360,94 @@ export const BudgetDashboard = () => {
     });
   };
 
+  // Save state for undo
+  const saveStateForUndo = useCallback(() => {
+    setPreviousState(JSON.parse(JSON.stringify(budgetData)));
+  }, [budgetData]);
+
+  // Undo function
+  const handleUndo = useCallback(() => {
+    if (previousState) {
+      setBudgetData(previousState);
+      setPreviousState(null);
+      toast({
+        title: "Ångrat",
+        description: "Senaste ändringen har ångrats.",
+      });
+    }
+  }, [previousState, toast]);
+
+  // Bulk update gross margin for all months
+  const handleBulkGrossMarginUpdate = useCallback((newMargin: number) => {
+    saveStateForUndo();
+    
+    setBudgetData(prev => {
+      const current = prev[view];
+      
+      const updatedMonthly = current.monthlyData.map(m => {
+        const newGrossProfit = m.revenue * (newMargin / 100);
+        const newCogs = m.revenue - newGrossProfit;
+        const newEbit = newGrossProfit - m.totalOpex - m.depreciation;
+        const newEbitMargin = m.revenue > 0 ? Math.round((newEbit / m.revenue) * 1000) / 10 : 0;
+        const newResultAfterFinancial = newEbit + m.financialCosts;
+
+        return {
+          ...m,
+          cogs: Math.round(newCogs),
+          grossProfit: Math.round(newGrossProfit),
+          grossMargin: newMargin,
+          ebit: Math.round(newEbit),
+          ebitMargin: newEbitMargin,
+          resultAfterFinancial: Math.round(newResultAfterFinancial),
+        };
+      });
+
+      const updatedCurrent: BudgetData = {
+        ...current,
+        monthlyData: updatedMonthly,
+      };
+
+      const next = { ...prev, [view]: updatedCurrent } as Record<CompanyView, BudgetData>;
+      const updatedIpinium = (view === "ipinium" ? updatedCurrent : prev.ipinium);
+      const updatedOnepan = (view === "onepan" ? updatedCurrent : prev.onepan);
+
+      // Save version
+      saveVersion(updatedCurrent.company, updatedCurrent, `Bulk gross margin update to ${newMargin}%`);
+
+      toast({
+        title: "Uppdaterat",
+        description: `Bruttovinst % uppdaterad till ${newMargin}% för alla månader.`,
+      });
+
+      return {
+        ...next,
+        combined: computeCombined(updatedIpinium, updatedOnepan),
+      };
+    });
+  }, [view, saveStateForUndo, saveVersion, toast]);
+
+  // Restore version
+  const handleRestoreVersion = useCallback((data: BudgetData) => {
+    saveStateForUndo();
+    
+    setBudgetData(prev => {
+      const normalized = normalizeTotals(data);
+      const next = { ...prev, [view]: normalized } as Record<CompanyView, BudgetData>;
+      const updatedIpinium = (view === "ipinium" ? normalized : prev.ipinium);
+      const updatedOnepan = (view === "onepan" ? normalized : prev.onepan);
+
+      return {
+        ...next,
+        combined: computeCombined(updatedIpinium, updatedOnepan),
+      };
+    });
+  }, [view, saveStateForUndo]);
+
+  // Check admin status on mount
+  useEffect(() => {
+    checkAdminStatus();
+  }, [checkAdminStatus]);
+
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -366,10 +459,22 @@ export const BudgetDashboard = () => {
               <div className="text-muted-foreground text-3xl font-light">&</div>
               <img src={onepanLogo} alt="OnePan" className="h-12 object-contain" />
             </div>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logga ut
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleUndo}
+                disabled={!previousState}
+              >
+                <Undo2 className="h-4 w-4 mr-2" />
+                Ångra
+              </Button>
+              <VersionHistory company={budget.company} onRestore={handleRestoreVersion} />
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Logga ut
+              </Button>
+            </div>
           </div>
           <div>
             <h1 className="text-4xl font-bold text-foreground">Budget 2026</h1>
@@ -388,6 +493,9 @@ export const BudgetDashboard = () => {
           </TabsList>
 
           <TabsContent value={view} className="space-y-6 mt-6">
+            {/* Bulk Gross Margin Update */}
+            <BulkGrossMarginUpdate onUpdate={handleBulkGrossMarginUpdate} />
+
             {/* Metrics */}
             <BudgetMetrics budget={budget} />
 

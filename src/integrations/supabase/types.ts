@@ -38,6 +38,33 @@ export type Database = {
         }
         Relationships: []
       }
+      budget_versions: {
+        Row: {
+          company: string
+          created_at: string | null
+          created_by: string
+          data: Json
+          id: string
+          version_note: string | null
+        }
+        Insert: {
+          company: string
+          created_at?: string | null
+          created_by: string
+          data: Json
+          id?: string
+          version_note?: string | null
+        }
+        Update: {
+          company?: string
+          created_at?: string | null
+          created_by?: string
+          data?: Json
+          id?: string
+          version_note?: string | null
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           comment_text: string
