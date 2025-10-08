@@ -26,26 +26,32 @@ export const BudgetDashboard = () => {
       const current = prev[view];
       const prevMonthly = current.monthlyData;
 
+      const norm = (s: string) => s.trim().toLowerCase().slice(0, 3);
+
       const recomputed = prevMonthly.map((m) => {
-        const totalRevenue = (updatedAreas || []).reduce((sum, area) => {
-          const d = area.monthlyData.find((d) => d.month === m.month);
-          return sum + (d?.revenue ?? 0);
-        }, 0);
-        const totalGrossProfit = (updatedAreas || []).reduce((sum, area) => {
-          const d = area.monthlyData.find((d) => d.month === m.month);
-          return sum + (d?.grossProfit ?? 0);
-        }, 0);
+        let anyMatch = false;
+        let totalRevenue = 0;
+        let totalGrossProfit = 0;
 
-        const revenue = Math.round(totalRevenue);
-        const grossProfit = Math.round(totalGrossProfit);
+        (updatedAreas || []).forEach((area) => {
+          const d = area.monthlyData.find((d) => norm(d.month) === norm(m.month));
+          if (d) {
+            anyMatch = true;
+            totalRevenue += d.revenue ?? 0;
+            totalGrossProfit += d.grossProfit ?? 0;
+          }
+        });
+
+        const revenue = anyMatch ? Math.round(totalRevenue) : m.revenue;
+        const grossProfit = anyMatch ? Math.round(totalGrossProfit) : m.grossProfit;
         const cogs = Math.max(0, revenue - grossProfit);
-        const grossMargin = revenue > 0 ? Math.round(((grossProfit / revenue) * 1000)) / 10 : 0;
+        const grossMargin = revenue > 0 ? Math.round((grossProfit / revenue) * 1000) / 10 : 0;
 
-        // Behåll OPEX, avskrivningar och finansiella kostnader oförändrade (som absoluta tal)
+        // Behåll OPEX, avskrivningar och finansiella kostnader oförändrade (absoluta tal)
         const { personnel, marketing, office, otherOpex, depreciation, financialCosts } = m;
         const totalOpex = personnel + marketing + office + otherOpex;
         const ebit = grossProfit - totalOpex - depreciation;
-        const ebitMargin = revenue > 0 ? Math.round(((ebit / revenue) * 1000)) / 10 : 0;
+        const ebitMargin = revenue > 0 ? Math.round((ebit / revenue) * 1000) / 10 : 0;
         const resultAfterFinancial = ebit + financialCosts;
 
         return {
