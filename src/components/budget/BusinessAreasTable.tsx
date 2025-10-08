@@ -536,14 +536,15 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
               </>
             )}
 
-            {/* Övriga products - show individually (exclude Färsmaskiner and Kyla och värme) */}
+            {/* Övriga products - show individually (exclude Färsmaskiner, Kyla och värme, and Ångstäd) */}
             {businessAreas
               .filter(area => {
                 const name = area.name.toLowerCase();
                 return !name.includes("tina") && 
                        !name.includes("plåt") && 
                        !name.includes("färsmaskiner") && 
-                       !name.includes("kyla och värme");
+                       !name.includes("kyla och värme") &&
+                       !name.includes("ångstäd");
               })
               .map(area => (
                 <Fragment key={`summary-${area.name}`}>
