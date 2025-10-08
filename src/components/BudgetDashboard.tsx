@@ -14,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
+import ipiniumLogo from "@/assets/ipinium-logo.jpg";
+import onepanLogo from "@/assets/onepan-logo.png";
 
 type CompanyView = "ipinium" | "onepan" | "combined";
 
@@ -306,27 +308,32 @@ export const BudgetDashboard = () => {
     <div className="min-h-screen bg-background p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
         {/* Header */}
-        <div className="space-y-4 mb-2">
+        <div className="space-y-4 mb-8">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-foreground">Budget 2026</h1>
-              <p className="text-muted-foreground mt-2">
-                Finansiella prognoser och intäktsuppdelning
-              </p>
+            <div className="flex items-center gap-8">
+              <img src={ipiniumLogo} alt="Ipinium" className="h-12 object-contain" />
+              <div className="text-muted-foreground text-3xl font-light">&</div>
+              <img src={onepanLogo} alt="OnePan" className="h-12 object-contain" />
             </div>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
               Logga ut
             </Button>
           </div>
+          <div>
+            <h1 className="text-4xl font-bold text-foreground">Budget 2026</h1>
+            <p className="text-muted-foreground mt-2">
+              Finansiella prognoser och intäktsuppdelning
+            </p>
+          </div>
         </div>
 
         {/* Company Selector */}
         <Tabs value={view} onValueChange={(v) => setView(v as CompanyView)} className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-3">
-            <TabsTrigger value="ipinium">Ipinium</TabsTrigger>
-            <TabsTrigger value="onepan">OnePan</TabsTrigger>
-            <TabsTrigger value="combined">Combined</TabsTrigger>
+          <TabsList className="grid w-full max-w-md grid-cols-3 bg-muted">
+            <TabsTrigger value="ipinium" className="data-[state=active]:bg-card">Ipinium</TabsTrigger>
+            <TabsTrigger value="onepan" className="data-[state=active]:bg-card">OnePan</TabsTrigger>
+            <TabsTrigger value="combined" className="data-[state=active]:bg-card">Combined</TabsTrigger>
           </TabsList>
 
           <TabsContent value={view} className="space-y-6 mt-6">
