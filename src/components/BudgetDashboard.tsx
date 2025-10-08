@@ -198,6 +198,8 @@ export const BudgetDashboard = () => {
   };
 
   const handleBusinessAreasUpdate = (updatedAreas: BudgetData["businessAreas"]) => {
+    saveStateForUndo();
+    
     setBudgetData((prev) => {
       const current = prev[view];
       const prevMonthly = current.monthlyData;
@@ -308,6 +310,9 @@ export const BudgetDashboard = () => {
       const updatedIpinium = (view === "ipinium" ? updatedCurrent : prev.ipinium);
       const updatedOnepan = (view === "onepan" ? updatedCurrent : prev.onepan);
 
+      // Save version
+      saveVersion(updatedCurrent.company, updatedCurrent, 'Business areas update');
+
       return {
         ...next,
         combined: computeCombined(updatedIpinium, updatedOnepan),
@@ -315,6 +320,8 @@ export const BudgetDashboard = () => {
     });
   };
   const handleCostCategoriesUpdate = (updatedCategories: BudgetData["costCategories"]) => {
+    saveStateForUndo();
+    
     setBudgetData(prev => {
       const current = prev[view];
       const prevMonthly = current.monthlyData;
@@ -361,6 +368,9 @@ export const BudgetDashboard = () => {
       const next = { ...prev, [view]: updatedCurrent } as Record<CompanyView, BudgetData>;
       const updatedIpinium = (view === "ipinium" ? updatedCurrent : prev.ipinium);
       const updatedOnepan = (view === "onepan" ? updatedCurrent : prev.onepan);
+
+      // Save version
+      saveVersion(updatedCurrent.company, updatedCurrent, 'Cost categories update');
 
       return {
         ...next,
