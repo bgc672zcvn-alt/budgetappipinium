@@ -87,11 +87,11 @@ const generateOnepanMonthly = (): MonthlyData[] => {
     const grossProfit = revenue - cogs;
     const grossMargin = (grossProfit / revenue) * 100;
     
-    // Operating expenses - currently unprofitable
+    // Operating expenses - optimized for -800k annual result
     const personnel = revenue * 0.15; // 15% personnel
-    const marketing = revenue * 0.35; // 35% marketing (high growth costs)
-    const office = revenue * 0.18; // 18% office & facilities
-    const otherOpex = revenue * 0.03; // 3% other
+    const marketing = revenue * 0.22; // 22% marketing (reduced for profitability)
+    const office = revenue * 0.10; // 10% office & facilities (optimized)
+    const otherOpex = revenue * 0.024; // 2.4% other
     const totalOpex = personnel + marketing + office + otherOpex;
     
     const depreciation = revenue * 0.04; // 4% depreciation
