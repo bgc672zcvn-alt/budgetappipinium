@@ -186,6 +186,18 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
           <TableBody>
             {businessAreas.map((area) => (
               <Fragment key={area.name}>
+                {/* Area Sticky Month Header */}
+                <TableRow className="bg-card">
+                  <TableCell className="sticky top-0 left-0 z-30 bg-card" colSpan={2}>
+                    &nbsp;
+                  </TableCell>
+                  {months.map((m) => (
+                    <TableCell key={m} className="text-right min-w-[120px] sticky top-0 z-20 bg-card">
+                      {m}
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-right min-w-[120px] sticky top-0 z-20 bg-card">Totalt</TableCell>
+                </TableRow>
                 {/* Revenue Row */}
                 <TableRow key={`${area.name}-revenue`}>
                   <TableCell className="font-medium sticky left-0 bg-background z-30" rowSpan={3}>
