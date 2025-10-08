@@ -1,3 +1,15 @@
+export interface BusinessAreaMonthly {
+  month: string;
+  revenue: number;
+  contributionMargin: number; // Percentage (BV%)
+  grossProfit: number; // Calculated: revenue * (contributionMargin/100)
+}
+
+export interface BusinessArea {
+  name: string;
+  monthlyData: BusinessAreaMonthly[];
+}
+
 export interface MonthlyData {
   month: string;
   revenue: number;
@@ -22,4 +34,5 @@ export interface BudgetData {
   targetRevenue: number;
   growthRate: string;
   monthlyData: MonthlyData[];
+  businessAreas?: BusinessArea[]; // Only for companies with business areas (like Ipinium)
 }
