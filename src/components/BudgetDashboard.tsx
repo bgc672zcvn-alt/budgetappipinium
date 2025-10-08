@@ -27,17 +27,17 @@ const normalizeTotals = (b: BudgetData): BudgetData => ({
 const computeCombined = (ip: BudgetData, op: BudgetData): BudgetData => {
   const combinedMonthly = ip.monthlyData.map((im, idx) => {
     const om = op.monthlyData[idx];
-    const revenue = im.revenue + (om?.revenue ?? 0);
-    const cogs = im.cogs + (om?.cogs ?? 0);
-    const grossProfit = im.grossProfit + (om?.grossProfit ?? 0);
-    const personnel = im.personnel + (om?.personnel ?? 0);
-    const marketing = im.marketing + (om?.marketing ?? 0);
-    const office = im.office + (om?.office ?? 0);
-    const otherOpex = im.otherOpex + (om?.otherOpex ?? 0);
+    const revenue = Math.round(im.revenue + (om?.revenue ?? 0));
+    const cogs = Math.round(im.cogs + (om?.cogs ?? 0));
+    const grossProfit = Math.round(im.grossProfit + (om?.grossProfit ?? 0));
+    const personnel = Math.round(im.personnel + (om?.personnel ?? 0));
+    const marketing = Math.round(im.marketing + (om?.marketing ?? 0));
+    const office = Math.round(im.office + (om?.office ?? 0));
+    const otherOpex = Math.round(im.otherOpex + (om?.otherOpex ?? 0));
     const totalOpex = personnel + marketing + office + otherOpex;
-    const depreciation = im.depreciation + (om?.depreciation ?? 0);
+    const depreciation = Math.round(im.depreciation + (om?.depreciation ?? 0));
     const ebit = grossProfit - totalOpex - depreciation;
-    const financialCosts = im.financialCosts + (om?.financialCosts ?? 0);
+    const financialCosts = Math.round(im.financialCosts + (om?.financialCosts ?? 0));
     const resultAfterFinancial = ebit + financialCosts;
     const grossMargin = revenue > 0 ? Math.round((grossProfit / revenue) * 1000) / 10 : 0;
     const ebitMargin = revenue > 0 ? Math.round((ebit / revenue) * 1000) / 10 : 0;
