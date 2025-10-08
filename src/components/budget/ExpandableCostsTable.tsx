@@ -104,15 +104,15 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate, company }: Expa
 
       <div className="overflow-x-auto">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-20 bg-background">
             <TableRow>
-              <TableHead className="w-[250px] sticky left-0 bg-background z-10">Kategori / Konto</TableHead>
+              <TableHead className="w-[250px] sticky left-0 bg-background z-30">Kategori / Konto</TableHead>
               {months.map((month) => (
-                <TableHead key={month} className="text-right min-w-[120px]">
+                <TableHead key={month} className="text-right min-w-[120px] bg-background">
                   {month}
                 </TableHead>
               ))}
-              <TableHead className="text-right min-w-[120px] font-semibold">Totalt</TableHead>
+              <TableHead className="text-right min-w-[120px] font-semibold bg-background">Totalt</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

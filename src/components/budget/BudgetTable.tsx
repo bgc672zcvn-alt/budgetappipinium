@@ -32,9 +32,9 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
       </div>
       <div className="overflow-x-auto">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-20 bg-background">
             <TableRow className="bg-muted/50">
-              <TableHead className="font-semibold">Month</TableHead>
+              <TableHead className="font-semibold sticky left-0 bg-muted/50 z-30">Month</TableHead>
               <TableHead className="text-right font-semibold">Revenue</TableHead>
               <TableHead className="text-right font-semibold">COGS</TableHead>
               <TableHead className="text-right font-semibold">Gross Profit</TableHead>
@@ -54,7 +54,7 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
           <TableBody>
             {budget.monthlyData.map((month) => (
               <TableRow key={month.month} className="hover:bg-muted/30">
-                <TableCell className="font-medium">{month.month}</TableCell>
+                <TableCell className="font-medium sticky left-0 bg-background z-10">{month.month}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <span className="font-semibold">{formatCurrency(month.revenue)}</span>
@@ -198,7 +198,7 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
               </TableRow>
             ))}
             <TableRow className="bg-muted/50 font-bold border-t-2">
-              <TableCell>Total</TableCell>
+              <TableCell className="sticky left-0 bg-muted/50 z-10">Total</TableCell>
               <TableCell className="text-right">
                 {formatCurrency(
                   budget.monthlyData.reduce((sum, m) => sum + m.revenue, 0)

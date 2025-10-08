@@ -171,16 +171,16 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
 
       <div className="overflow-x-auto">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-20 bg-background">
             <TableRow>
-              <TableHead className="w-[200px] sticky left-0 bg-background z-10">Affärsområde</TableHead>
-              <TableHead className="w-[120px]">Typ</TableHead>
+              <TableHead className="w-[200px] sticky left-0 bg-background z-30">Affärsområde</TableHead>
+              <TableHead className="w-[120px] bg-background">Typ</TableHead>
               {months.map((month) => (
-                <TableHead key={month} className="text-right min-w-[120px]">
+                <TableHead key={month} className="text-right min-w-[120px] bg-background">
                   {month}
                 </TableHead>
               ))}
-              <TableHead className="text-right min-w-[120px] font-semibold">Totalt</TableHead>
+              <TableHead className="text-right min-w-[120px] font-semibold bg-background">Totalt</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
