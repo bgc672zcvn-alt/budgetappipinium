@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -488,7 +488,7 @@ export const BudgetDashboard = () => {
                 <Undo2 className="h-4 w-4 mr-2" />
                 Ångra
               </Button>
-              <VersionHistory company={budget.company} onRestore={handleRestoreVersion} />
+              <VersionHistory company={view === "combined" ? "Ipinium AB" : budget.company} onRestore={handleRestoreVersion} />
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Logga ut
