@@ -10,6 +10,21 @@ export interface BusinessArea {
   monthlyData: BusinessAreaMonthly[];
 }
 
+export interface AccountMonthly {
+  month: string;
+  amount: number;
+}
+
+export interface Account {
+  name: string;
+  monthlyData: AccountMonthly[];
+}
+
+export interface CostCategory {
+  name: string;
+  accounts: Account[];
+}
+
 export interface MonthlyData {
   month: string;
   revenue: number;
@@ -35,4 +50,5 @@ export interface BudgetData {
   growthRate: string;
   monthlyData: MonthlyData[];
   businessAreas?: BusinessArea[]; // Only for companies with business areas (like Ipinium)
+  costCategories?: CostCategory[]; // Detailed cost breakdown with accounts
 }

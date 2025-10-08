@@ -4,25 +4,42 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BudgetMetrics } from "./budget/BudgetMetrics";
 import { BudgetChart } from "./budget/BudgetChart";
 import { BudgetTable } from "./budget/BudgetTable";
+import { BusinessAreasTable } from "./budget/BusinessAreasTable";
+import { ExpandableCostsTable } from "./budget/ExpandableCostsTable";
 import { ipiniumBudget, onepanBudget, getCombinedBudget } from "@/data/budgetData";
+import { BudgetData } from "@/types/budget";
 
 type CompanyView = "ipinium" | "onepan" | "combined";
 
 export const BudgetDashboard = () => {
   const [view, setView] = useState<CompanyView>("ipinium");
+  const [budgetData, setBudgetData] = useState<Record<CompanyView, BudgetData>>({
+    ipinium: ipiniumBudget,
+    onepan: onepanBudget,
+    combined: getCombinedBudget(),
+  });
 
-  const getBudgetData = () => {
-    switch (view) {
-      case "ipinium":
-        return ipiniumBudget;
-      case "onepan":
-        return onepanBudget;
-      case "combined":
-        return getCombinedBudget();
-    }
+  const budget = budgetData[view];
+
+  const handleBusinessAreasUpdate = (updatedAreas: BudgetData["businessAreas"]) => {
+    setBudgetData(prev => ({
+      ...prev,
+      [view]: {
+        ...prev[view],
+        businessAreas: updatedAreas,
+      },
+    }));
   };
 
-  const budget = getBudgetData();
+  const handleCostCategoriesUpdate = (updatedCategories: BudgetData["costCategories"]) => {
+    setBudgetData(prev => ({
+      ...prev,
+      [view]: {
+        ...prev[view],
+        costCategories: updatedCategories,
+      },
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
@@ -47,6 +64,14 @@ export const BudgetDashboard = () => {
             {/* Metrics */}
             <BudgetMetrics budget={budget} />
 
+            {/* Business Areas (only for Ipinium) */}
+            {budget.businessAreas && (
+              <BusinessAreasTable
+                businessAreas={budget.businessAreas}
+                onUpdate={handleBusinessAreasUpdate}
+              />
+            )}
+
             {/* Chart */}
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4 text-foreground">
@@ -54,6 +79,14 @@ export const BudgetDashboard = () => {
               </h2>
               <BudgetChart data={budget.monthlyData} />
             </Card>
+
+            {/* Cost Categories (only for Ipinium) */}
+            {budget.costCategories && (
+              <ExpandableCostsTable
+                costCategories={budget.costCategories}
+                onUpdate={handleCostCategoriesUpdate}
+              />
+            )}
 
             {/* Table */}
             <BudgetTable budget={budget} />

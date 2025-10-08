@@ -1,4 +1,4 @@
-import { BudgetData, MonthlyData } from "@/types/budget";
+import { BudgetData, MonthlyData, BusinessArea, BusinessAreaMonthly, CostCategory, Account, AccountMonthly } from "@/types/budget";
 
 const months = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -121,12 +121,115 @@ const generateOnepanMonthly = (): MonthlyData[] => {
   });
 };
 
+// Ipinium Business Areas based on 2025 actuals
+const generateIpiniumBusinessAreas = (): BusinessArea[] => {
+  const businessAreas = [
+    { name: "Plåtar", share: 0.14, margin: 44.4 },
+    { name: "Kyla och värme", share: 0.06, margin: 43.6 },
+    { name: "Tina Land", share: 0.09, margin: 26.8 },
+    { name: "Tina Marin", share: 0.31, margin: 29.9 },
+    { name: "Reservdelar Tina", share: 0.33, margin: 45.4 },
+    { name: "Färsmaskiner", share: 0.02, margin: 67.5 },
+    { name: "RC plåtar", share: 0.05, margin: 48.1 },
+  ];
+
+  const targetRevenue = 30000000;
+  const avgMonthly = targetRevenue / 12;
+
+  return businessAreas.map(area => {
+    const monthlyData: BusinessAreaMonthly[] = months.map((month, index) => {
+      // Same seasonal pattern as total revenue
+      const seasonalFactor = 
+        index === 11 ? 1.60 : // December: very strong
+        index === 10 ? 1.35 : // November
+        index === 9 ? 1.30 : // October
+        index === 6 ? 0.50 : // July: very weak
+        index === 5 || index === 7 ? 0.85 : // June, August
+        index === 2 ? 1.20 : // March peak
+        0.95;
+      
+      const revenue = avgMonthly * seasonalFactor * area.share;
+      const grossProfit = revenue * (area.margin / 100);
+      
+      return {
+        month,
+        revenue: Math.round(revenue),
+        contributionMargin: area.margin,
+        grossProfit: Math.round(grossProfit),
+      };
+    });
+
+    return {
+      name: area.name,
+      monthlyData,
+    };
+  });
+};
+
+// Ipinium Cost Categories with detailed accounts
+const generateIpiniumCostCategories = (): CostCategory[] => {
+  const targetRevenue = 30000000;
+  const avgMonthly = targetRevenue / 12;
+
+  const createMonthlyData = (percentage: number): AccountMonthly[] => {
+    return months.map((month, index) => {
+      const seasonalFactor = 
+        index === 11 ? 1.60 :
+        index === 10 ? 1.35 :
+        index === 9 ? 1.30 :
+        index === 6 ? 0.50 :
+        index === 5 || index === 7 ? 0.85 :
+        index === 2 ? 1.20 :
+        0.95;
+      
+      const revenue = avgMonthly * seasonalFactor;
+      const amount = revenue * percentage;
+      
+      return {
+        month,
+        amount: Math.round(amount),
+      };
+    });
+  };
+
+  return [
+    {
+      name: "Personal",
+      accounts: [
+        { name: "Bruttolöner och förmåner", monthlyData: createMonthlyData(0.10) },
+        { name: "Sociala avgifter", monthlyData: createMonthlyData(0.05) },
+        { name: "Pensionskostnader", monthlyData: createMonthlyData(0.03) },
+        { name: "Övriga personalkostnader", monthlyData: createMonthlyData(0.01) },
+      ],
+    },
+    {
+      name: "Marketing",
+      accounts: [
+        { name: "Reklam och PR", monthlyData: createMonthlyData(0.03) },
+        { name: "Övriga försäljningskostnader", monthlyData: createMonthlyData(0.02) },
+      ],
+    },
+    {
+      name: "Office",
+      accounts: [
+        { name: "Lokalkostnader", monthlyData: createMonthlyData(0.06) },
+        { name: "Tele och post", monthlyData: createMonthlyData(0.02) },
+        { name: "Förbrukningsinventarier", monthlyData: createMonthlyData(0.02) },
+        { name: "Företagsförsäkringar", monthlyData: createMonthlyData(0.02) },
+        { name: "Övriga externa tjänster", monthlyData: createMonthlyData(0.02) },
+      ],
+    },
+  ];
+};
+
 export const ipiniumBudget: BudgetData = {
   company: "Ipinium AB",
   totalRevenue: 30000000,
   targetRevenue: 30000000,
   growthRate: "+45%",
   monthlyData: generateIpiniumMonthly(),
+  businessAreas: generateIpiniumBusinessAreas(),
+  costCategories: generateIpiniumCostCategories(),
 };
 
 export const onepanBudget: BudgetData = {
