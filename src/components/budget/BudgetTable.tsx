@@ -24,13 +24,13 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
   };
 
   return (
-    <Card className="overflow-hidden">
+    <Card>
       <div className="p-6">
         <h2 className="text-xl font-semibold mb-4 text-foreground">
           Monthly Breakdown
         </h2>
       </div>
-      <div className="relative overflow-x-auto">
+      <div className="relative">
         <Table>
           <TableHeader>
             <TableRow className="sticky top-0 z-30 bg-background">

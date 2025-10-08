@@ -169,7 +169,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
         Klicka på intäkt eller BV% för att redigera värden. Bruttovinst räknas automatiskt ut.
       </p>
 
-      <div className="relative overflow-x-auto">
+      <div className="relative">
         <Table>
           <TableHeader>
             <TableRow className="sticky top-0 z-30 bg-background">

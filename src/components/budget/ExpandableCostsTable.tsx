@@ -102,7 +102,7 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate, company }: Expa
         Klicka på kategori för att expandera och se underkonton. Klicka på belopp för att redigera.
       </p>
 
-      <div className="relative overflow-x-auto">
+      <div className="relative">
         <Table>
           <TableHeader>
             <TableRow className="sticky top-0 z-30 bg-background">
