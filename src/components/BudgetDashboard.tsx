@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BudgetMetrics } from "./budget/BudgetMetrics";
@@ -8,6 +8,8 @@ import { BusinessAreasTable } from "./budget/BusinessAreasTable";
 import { ExpandableCostsTable } from "./budget/ExpandableCostsTable";
 import { ipiniumBudget, onepanBudget } from "@/data/budgetData";
 import { BudgetData } from "@/types/budget";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 type CompanyView = "ipinium" | "onepan" | "combined";
 
@@ -64,14 +66,76 @@ const computeCombined = (ip: BudgetData, op: BudgetData): BudgetData => {
 };
 
 export const BudgetDashboard = () => {
+  const { toast } = useToast();
   const [view, setView] = useState<CompanyView>("ipinium");
   const [budgetData, setBudgetData] = useState<Record<CompanyView, BudgetData>>({
     ipinium: ipiniumBudget,
     onepan: onepanBudget,
     combined: computeCombined(ipiniumBudget, onepanBudget),
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   const budget = budgetData[view];
+
+  // Ladda data från backend vid start
+  useEffect(() => {
+    const loadBudgets = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('budget_data')
+          .select('*');
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const loaded: Record<string, BudgetData> = {};
+          data.forEach((row) => {
+            loaded[row.company.toLowerCase()] = row.data as unknown as BudgetData;
+          });
+
+          const ip = loaded['ipinium ab'] || ipiniumBudget;
+          const op = loaded['onepan'] || onepanBudget;
+
+          setBudgetData({
+            ipinium: ip,
+            onepan: op,
+            combined: computeCombined(ip, op),
+          });
+        }
+      } catch (error) {
+        console.error('Fel vid laddning av budget:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadBudgets();
+  }, []);
+
+  // Spara ändringar till backend
+  useEffect(() => {
+    if (isLoading) return;
+
+    const saveBudgets = async () => {
+      try {
+        await supabase
+          .from('budget_data')
+          .upsert([
+            { company: 'Ipinium AB', data: budgetData.ipinium as any },
+            { company: 'OnePan', data: budgetData.onepan as any },
+          ], { onConflict: 'company' });
+      } catch (error) {
+        console.error('Fel vid sparande:', error);
+        toast({
+          title: "Fel vid sparande",
+          description: "Kunde inte spara ändringar till backend.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    saveBudgets();
+  }, [budgetData, isLoading, toast]);
 
   const handleBusinessAreasUpdate = (updatedAreas: BudgetData["businessAreas"]) => {
     setBudgetData((prev) => {
