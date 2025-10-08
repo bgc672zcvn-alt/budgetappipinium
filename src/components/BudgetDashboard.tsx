@@ -22,70 +22,13 @@ export const BudgetDashboard = () => {
   const budget = budgetData[view];
 
   const handleBusinessAreasUpdate = (updatedAreas: BudgetData["businessAreas"]) => {
-    setBudgetData((prev) => {
-      const current = prev[view];
-      const prevMonthly = current.monthlyData;
-
-      const recomputed = prevMonthly.map((m) => {
-        // Sum revenue and gross profit from business areas for this month
-        const totalRevenue = (updatedAreas || []).reduce((sum, area) => {
-          const d = area.monthlyData.find((d) => d.month === m.month);
-          return sum + (d?.revenue || 0);
-        }, 0);
-        const totalGrossProfit = (updatedAreas || []).reduce((sum, area) => {
-          const d = area.monthlyData.find((d) => d.month === m.month);
-          return sum + (d?.grossProfit || 0);
-        }, 0);
-
-        const revenue = Math.round(totalRevenue);
-        const grossProfit = Math.round(totalGrossProfit);
-        const cogs = Math.round(revenue - grossProfit);
-        const grossMargin = revenue > 0 ? Math.round(((grossProfit / revenue) * 100) * 10) / 10 : 0;
-
-        // Keep same percentages for OPEX, D&A and financial costs as before
-        const safeRatio = (num: number, den: number) => (den > 0 ? num / den : 0);
-        const personnel = Math.round(revenue * safeRatio(m.personnel, m.revenue));
-        const marketing = Math.round(revenue * safeRatio(m.marketing, m.revenue));
-        const office = Math.round(revenue * safeRatio(m.office, m.revenue));
-        const otherOpex = Math.round(revenue * safeRatio(m.otherOpex, m.revenue));
-        const totalOpex = personnel + marketing + office + otherOpex;
-        const depreciation = Math.round(revenue * safeRatio(m.depreciation, m.revenue));
-        const ebit = grossProfit - totalOpex - depreciation;
-        const ebitMargin = revenue > 0 ? Math.round(((ebit / revenue) * 100) * 10) / 10 : 0;
-        const financialCosts = Math.round(revenue * safeRatio(m.financialCosts, m.revenue));
-        const resultAfterFinancial = ebit + financialCosts;
-
-        return {
-          ...m,
-          revenue,
-          cogs,
-          grossProfit,
-          grossMargin,
-          personnel,
-          marketing,
-          office,
-          otherOpex,
-          totalOpex,
-          depreciation,
-          ebit,
-          ebitMargin,
-          financialCosts,
-          resultAfterFinancial,
-        };
-      });
-
-      const newTotalRevenue = recomputed.reduce((s, md) => s + md.revenue, 0);
-
-      return {
-        ...prev,
-        [view]: {
-          ...current,
-          monthlyData: recomputed,
-          totalRevenue: newTotalRevenue,
-          businessAreas: updatedAreas,
-        },
-      };
-    });
+    setBudgetData(prev => ({
+      ...prev,
+      [view]: {
+        ...prev[view],
+        businessAreas: updatedAreas,
+      },
+    }));
   };
   const handleCostCategoriesUpdate = (updatedCategories: BudgetData["costCategories"]) => {
     setBudgetData(prev => ({
