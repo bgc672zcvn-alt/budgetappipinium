@@ -178,24 +178,11 @@ Deno.serve(async (req) => {
 
       console.log(`Fetching data for ${fromDate} to ${toDate}`);
 
-      // Fetch financial summary for the month
-      const financeResponse = await fetch(
-        `https://api.fortnox.se/3/financialyearsum?date=${fromDate}`,
-        {
-          method: 'GET',
-          headers: fortnoxHeaders,
-        }
-      );
+      // Fetch financial summary for the month - Try vouchers (most reliable)
+      // First, find financial year ID that includes targetYear
+      const fy = (financialYearsData?.FinancialYears || []).find((y: any) => (new Date(y.FromDate)).getFullYear() === targetYear);
+      const fyId = fy?.Id;
 
-      if (!financeResponse.ok) {
-        console.error(`Failed to fetch finance data for month ${month}`);
-        continue;
-      }
-
-      const financeData = await financeResponse.json();
-      const accounts = financeData.FinancialYearSums || [];
-
-      // Calculate totals by account ranges (BAS kontoplan)
       let revenue = 0;        // 3000-3999 Intäkter
       let cogs = 0;          // 4000-4999 Kostnad för sålda varor
       let personnel = 0;     // 7000-7699 Personalkostnader
@@ -203,23 +190,53 @@ Deno.serve(async (req) => {
       let office = 0;        // 5000-5999 + 6100-6999 Lokalkostnader m.m.
       let other_opex = 0;    // 7700-7999 Övriga rörelsekostnader
 
-      for (const account of accounts) {
-        const accountNum = parseInt(account.Account || '0');
-        const balance = parseFloat(account.Balance || '0');
+      if (fyId) {
+        let page = 1;
+        let totalPages = 1;
+        do {
+          const vouchersResp = await fetch(`https://api.fortnox.se/3/vouchers?financialyear=${fyId}&fromdate=${fromDate}&todate=${toDate}&page=${page}`, {
+            method: 'GET',
+            headers: fortnoxHeaders,
+          });
 
-        if (accountNum >= 3000 && accountNum <= 3999) {
-          revenue += Math.abs(balance); // Revenue accounts are negative in balance
-        } else if (accountNum >= 4000 && accountNum <= 4999) {
-          cogs += Math.abs(balance);
-        } else if (accountNum >= 7000 && accountNum <= 7699) {
-          personnel += Math.abs(balance);
-        } else if (accountNum >= 6000 && accountNum <= 6099) {
-          marketing += Math.abs(balance);
-        } else if ((accountNum >= 5000 && accountNum <= 5999) || (accountNum >= 6100 && accountNum <= 6999)) {
-          office += Math.abs(balance);
-        } else if (accountNum >= 7700 && accountNum <= 7999) {
-          other_opex += Math.abs(balance);
-        }
+          if (!vouchersResp.ok) {
+            const errTxt = await vouchersResp.text();
+            console.error(`Vouchers API error for ${fromDate}-${toDate} p${page}:`, errTxt);
+            break;
+          }
+          const vouchersData = await vouchersResp.json();
+          const meta = vouchersData?.MetaInformation || vouchersData?.meta || {};
+          totalPages = parseInt(meta['@TotalPages'] || meta.total_pages || '1') || 1;
+
+          const vouchers = vouchersData?.Vouchers || vouchersData?.vouchers || [];
+          for (const v of vouchers) {
+            const rows = v?.VoucherRows || v?.voucherRows || v?.Rows || [];
+            for (const row of rows) {
+              const accountNum = parseInt(row.Account || row.account || '0');
+              const debit = parseFloat((row.Debit ?? row.debit ?? '0').toString());
+              const credit = parseFloat((row.Credit ?? row.credit ?? '0').toString());
+              const net = debit - credit; // debit positive, credit negative
+
+              if (accountNum >= 3000 && accountNum <= 3999) {
+                revenue += Math.abs(net);
+              } else if (accountNum >= 4000 && accountNum <= 4999) {
+                cogs += Math.abs(net);
+              } else if (accountNum >= 7000 && accountNum <= 7699) {
+                personnel += Math.abs(net);
+              } else if (accountNum >= 6000 && accountNum <= 6099) {
+                marketing += Math.abs(net);
+              } else if ((accountNum >= 5000 && accountNum <= 5999) || (accountNum >= 6100 && accountNum <= 6999)) {
+                office += Math.abs(net);
+              } else if (accountNum >= 7700 && accountNum <= 7999) {
+                other_opex += Math.abs(net);
+              }
+            }
+          }
+
+          page += 1;
+        } while (page <= totalPages);
+      } else {
+        console.warn('Could not determine financial year ID for targetYear', targetYear);
       }
 
       const gross_profit = revenue - cogs;
