@@ -36,8 +36,8 @@ Deno.serve(async (req) => {
       throw new Error('FORTNOX_ACCESS_TOKEN is not configured');
     }
 
-    if (!fortnoxClientId && !fortnoxClientSecret) {
-      throw new Error('FORTNOX_CLIENT_ID or FORTNOX_CLIENT_SECRET must be configured');
+    if (!fortnoxClientSecret) {
+      throw new Error('FORTNOX_CLIENT_SECRET is not configured');
     }
 
     if (!supabaseUrl || !supabaseServiceRoleKey) {
