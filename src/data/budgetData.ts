@@ -227,7 +227,8 @@ const generateOnepanMonthly = (): MonthlyData[] => {
 
 // Ipinium Business Areas - Growth focused on Tina products
 const generateIpiniumBusinessAreas = (monthlyData: MonthlyData[]): BusinessArea[] => {
-  const businessAreas = [
+  type AreaDef = { name: string; share: number; margin: number };
+  const areas: AreaDef[] = [
     // Tina-produkter först
     { name: "Tina Land", share: 0.15, margin: 26.8 },
     { name: "Tina Marin", share: 0.32, margin: 29.9 },
@@ -243,25 +244,44 @@ const generateIpiniumBusinessAreas = (monthlyData: MonthlyData[]): BusinessArea[
     { name: "Ångstäd", share: 0.00, margin: 0 },
   ];
 
-  return businessAreas.map(area => {
-    const monthlyAreaData: BusinessAreaMonthly[] = monthlyData.map((monthData) => {
-      // Use the actual monthly revenue and apply the area's share
-      const revenue = Math.round(monthData.revenue * area.share);
-      const grossProfit = Math.round(revenue * (area.margin / 100));
-      
-      return {
-        month: monthData.month,
-        revenue,
-        contributionMargin: area.margin,
-        grossProfit,
-      };
-    });
+  // Förbered resultatstrukturen
+  const result: BusinessArea[] = areas.map((a) => ({ name: a.name, monthlyData: [] as BusinessAreaMonthly[] }));
 
-    return {
-      name: area.name,
-      monthlyData: monthlyAreaData,
-    };
+  // För varje månad: fördela totalintäkten exakt med "largest remainder"-metoden
+  months.forEach((month, idx) => {
+    const total = monthlyData[idx]?.revenue ?? 0;
+
+    // Rå fördelning per area
+    const raw = areas.map((a) => total * a.share);
+    const base = raw.map((v) => Math.floor(v));
+    const frac = raw.map((v, i) => v - base[i]);
+
+    // Rester att fördela ut som +1 kr tills summan matchar exakt
+    let remainder = total - base.reduce((s, v) => s + v, 0);
+
+    // Sortera index efter störst decimalrest
+    const indices = areas.map((_, i) => i).sort((a, b) => frac[b] - frac[a]);
+
+    const increments = new Array(areas.length).fill(0);
+    for (let i = 0; i < remainder; i++) {
+      increments[indices[i % indices.length]] += 1;
+    }
+
+    // Bygg månadsrader per area
+    for (let i = 0; i < areas.length; i++) {
+      const revenue = base[i] + increments[i];
+      const margin = areas[i].margin;
+      const grossProfit = Math.round(revenue * (margin / 100));
+      (result[i].monthlyData as BusinessAreaMonthly[]).push({
+        month,
+        revenue,
+        contributionMargin: margin,
+        grossProfit,
+      });
+    }
   });
+
+  return result;
 };
 
 // Ipinium Cost Categories with detailed accounts
