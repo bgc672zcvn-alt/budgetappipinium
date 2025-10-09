@@ -30,6 +30,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
   const [editValue, setEditValue] = useState<number>(0);
   const [editType, setEditType] = useState<'revenue' | 'margin' | 'yearlyMargin'>('revenue');
   const [editingYearlyMargin, setEditingYearlyMargin] = useState<string | null>(null);
+  const [editingYearlyRevenue, setEditingYearlyRevenue] = useState<string | null>(null);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("sv-SE", {
@@ -93,6 +94,26 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
 
     onUpdate(updatedAreas);
     setEditingYearlyMargin(null);
+  };
+
+  const saveYearlyRevenueEdit = () => {
+    if (!editingYearlyRevenue) return;
+
+    const updatedAreas = businessAreas.map(area => {
+      if (area.name !== editingYearlyRevenue) return area;
+
+      // Distribute total evenly across all 12 months
+      const monthlyRevenue = editValue / 12;
+      const updatedMonthlyData = area.monthlyData.map(data => {
+        const grossProfit = monthlyRevenue * (data.contributionMargin / 100);
+        return { ...data, revenue: monthlyRevenue, grossProfit };
+      });
+
+      return { ...area, monthlyData: updatedMonthlyData };
+    });
+
+    onUpdate(updatedAreas);
+    setEditingYearlyRevenue(null);
   };
 
   const getTotals = (month: string) => {
@@ -236,7 +257,34 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                     </TableCell>
                   ))}
                   <TableCell className="text-right font-semibold">
-                    {formatCurrency(area.monthlyData.reduce((sum, d) => sum + d.revenue, 0))}
+                    {editingYearlyRevenue === area.name ? (
+                      <div className="flex items-center gap-1 justify-end">
+                        <Input
+                          type="number"
+                          value={editValue}
+                          onChange={(e) => setEditValue(Number(e.target.value))}
+                          className="w-28 h-7"
+                          autoFocus
+                        />
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveYearlyRevenueEdit}>
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingYearlyRevenue(null)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setEditingYearlyRevenue(area.name);
+                          setEditValue(area.monthlyData.reduce((sum, d) => sum + d.revenue, 0));
+                        }}
+                        className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 ml-auto group transition-colors"
+                      >
+                        <span>{formatCurrency(area.monthlyData.reduce((sum, d) => sum + d.revenue, 0))}</span>
+                        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                      </button>
+                    )}
                   </TableCell>
                 </TableRow>
 
