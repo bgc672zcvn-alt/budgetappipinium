@@ -1,3 +1,4 @@
+import React from "react";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -98,8 +99,8 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
           </TableHeader>
           <TableBody>
             {budget.monthlyData.map((month, index) => (
-              <>
-                <TableRow key={month.month} className="hover:bg-muted/30">
+              <React.Fragment key={month.month}>
+                <TableRow className="hover:bg-muted/30">
                   <TableCell className="font-medium sticky left-0 bg-background z-30">{month.month}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
@@ -250,7 +251,7 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
                   formatValue={formatCurrency}
                 />
               )}
-              </>
+              </React.Fragment>
             ))}
             <TableRow className="bg-muted/50 font-bold border-t-2">
               <TableCell className="sticky left-0 bg-muted z-20">Total</TableCell>
