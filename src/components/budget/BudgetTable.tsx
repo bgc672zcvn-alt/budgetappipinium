@@ -14,10 +14,11 @@ import { ComparisonRow } from "./ComparisonRow";
 import { useFortnoxData } from "@/hooks/useFortnoxData";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
-import { useSyncFortnoxData } from "@/hooks/useFortnoxData";
+import { useSyncFortnoxData, useFortnoxAvailableYears } from "@/hooks/useFortnoxData";
 import { toast } from "sonner";
 import { getAnnualTotals } from "@/lib/budgetMath";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface BudgetTableProps {
   budget: BudgetData;
@@ -27,10 +28,21 @@ interface BudgetTableProps {
 export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
   const totals = getAnnualTotals(budget);
   const currentYear = new Date().getFullYear();
-  const targetYear = currentYear;
+  const [selectedYear, setSelectedYear] = React.useState<number>(currentYear);
+  const targetYear = selectedYear;
   
   const { data: historicalData, isLoading, refetch } = useFortnoxData(budget.company, targetYear);
   const { syncData } = useSyncFortnoxData();
+  const { data: availableYears } = useFortnoxAvailableYears(budget.company);
+
+  React.useEffect(() => {
+    if (availableYears?.length) {
+      const latest = availableYears[0];
+      if (!availableYears.includes(targetYear)) {
+        setSelectedYear(latest);
+      }
+    }
+  }, [availableYears, targetYear]);
   
   const handleSync = async () => {
     try {
@@ -66,19 +78,31 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
 
   return (
     <Card>
-      <div className="p-6 flex items-center justify-between">
+      <div className="p-6 flex items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-foreground">
           Monthly Breakdown
         </h2>
-        <Button
-          onClick={handleSync}
-          variant="outline"
-          size="sm"
-          disabled={isLoading}
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Synka Fortnox
-        </Button>
+        <div className="flex items-center gap-3">
+          <Select value={String(targetYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Välj år" />
+            </SelectTrigger>
+            <SelectContent>
+              {(availableYears?.length ? availableYears : [currentYear, currentYear - 1]).map((y) => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            onClick={handleSync}
+            variant="outline"
+            size="sm"
+            disabled={isLoading}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Synka Fortnox
+          </Button>
+        </div>
       </div>
       <div className="relative">
         <Table>

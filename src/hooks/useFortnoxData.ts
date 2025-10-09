@@ -50,3 +50,21 @@ export const useSyncFortnoxData = () => {
 
   return { syncData };
 };
+
+export const useFortnoxAvailableYears = (company: string) => {
+  return useQuery({
+    queryKey: ['fortnox-years', company],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('fortnox_historical_data')
+        .select('year')
+        .eq('company', company)
+        .order('year', { ascending: false });
+
+      if (error) throw error;
+
+      const years = Array.from(new Set((data as { year: number }[]).map(d => Number(d.year)))).sort((a, b) => b - a);
+      return years;
+    },
+  });
+};
