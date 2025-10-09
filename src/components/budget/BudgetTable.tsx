@@ -47,6 +47,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
   const handleSync = async () => {
     try {
       toast.loading("Synkar data från Fortnox...");
+      console.log(`Syncing for company: ${budget.company}, year: ${targetYear}`);
       await syncData(budget.company, targetYear);
       await refetch();
       toast.success(`Data synkad från Fortnox för ${budget.company} (${targetYear}).`);

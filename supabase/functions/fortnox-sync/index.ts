@@ -61,17 +61,30 @@ Deno.serve(async (req) => {
 
     const companyToSync = requestedCompany || 'Ipinium AB';
 
-    // Get Fortnox tokens from database
-    const { data: tokenData, error: tokenError } = await supabaseAdmin
+    // Try to load tokens for requested company first; fall back to exact match in DB if needed
+    let { data: tokenData, error: tokenError } = await supabaseAdmin
       .from('fortnox_tokens')
       .select('*')
       .eq('user_id', user.id)
       .eq('company', companyToSync)
       .maybeSingle();
 
-    if (tokenError || !tokenData) {
-      throw new Error('No Fortnox connection found. Please connect Fortnox first.');
+    if ((tokenError || !tokenData) && requestedCompany) {
+      // Try a case-insensitive match as a fallback (handles e.g. 'Ipinium' vs 'Ipinium AB')
+      const { data: tokensList } = await supabaseAdmin
+        .from('fortnox_tokens')
+        .select('*')
+        .eq('user_id', user.id);
+      tokenData = (tokensList || []).find((t: any) =>
+        t.company?.toLowerCase().includes(requestedCompany!.toLowerCase())
+      );
     }
+
+    if (!tokenData) {
+      throw new Error('No Fortnox connection found for the selected company. Please connect Fortnox first.');
+    }
+
+    const companyForData = requestedCompany || tokenData.company;
 
     // Check if token is expired
     const expiresAt = new Date(tokenData.expires_at);
@@ -153,9 +166,11 @@ Deno.serve(async (req) => {
     // Skip accounts call (not needed for aggregation, reduces rate-limit pressure)
     // Previously: GET /accounts used only for logging
 
-    // Process each month of the previous year
+    // Process each month of the requested year
     const currentYear = new Date().getFullYear();
-    const targetYear = requestedYear || currentYear - 1; // default till föregående år
+    const targetYear = requestedYear || 2024; // default to 2024 instead of previous year
+
+    console.log(`Starting sync for company ${tokenData.company} for year ${targetYear}`);
 
     // Hämta redan synkade månader för att undvika onödiga API-anrop
     const { data: existingRows } = await supabaseAdmin
@@ -262,7 +277,7 @@ Deno.serve(async (req) => {
       const gross_profit = revenue - cogs;
 
       const data = {
-        company: tokenData.company,
+        company: companyForData,
         year: targetYear,
         month: month,
         revenue: Math.round(revenue),
