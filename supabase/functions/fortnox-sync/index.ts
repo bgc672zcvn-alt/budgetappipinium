@@ -35,6 +35,17 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
+    // Optional body params
+    let requestedCompany: string | undefined;
+    let requestedYear: number | undefined;
+    try {
+      const body = await req.json();
+      requestedCompany = body?.company;
+      requestedYear = body?.year;
+    } catch (_) {
+      // no body provided
+    }
+
     // Get user from authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -48,12 +59,14 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
+    const companyToSync = requestedCompany || 'Ipinium AB';
+
     // Get Fortnox tokens from database
     const { data: tokenData, error: tokenError } = await supabaseAdmin
       .from('fortnox_tokens')
       .select('*')
       .eq('user_id', user.id)
-      .eq('company', 'Ipinium AB') // TODO: Make this dynamic based on company parameter
+      .eq('company', companyToSync)
       .maybeSingle();
 
     if (tokenError || !tokenData) {
@@ -154,7 +167,7 @@ Deno.serve(async (req) => {
 
     // Process each month of the previous year
     const currentYear = new Date().getFullYear();
-    const targetYear = 2024; // Fetch 2024 data
+    const targetYear = requestedYear || currentYear - 1; // default till föregående år
 
     const monthlyData = [];
     for (let month = 1; month <= 12; month++) {
@@ -223,6 +236,13 @@ Deno.serve(async (req) => {
         office: Math.round(office),
         other_opex: Math.round(other_opex),
       };
+
+      // Only upsert if we actually have data (avoid overwriting with zeros)
+      const hasAnyValue = (data.revenue + data.cogs + data.personnel + data.marketing + data.office + data.other_opex) > 0;
+      if (!hasAnyValue) {
+        console.log(`No data for ${targetYear}-${month}, skipping upsert to avoid zeros.`);
+        continue;
+      }
 
       // Upsert data to database
       const { error } = await supabaseAdmin

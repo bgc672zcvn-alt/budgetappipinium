@@ -30,6 +30,26 @@ const normalizeTotals = (b: BudgetData): BudgetData => ({
   totalRevenue: sumRevenue(b.monthlyData),
 });
 
+// Rebalance monthly revenue to exactly match targetRevenue, preserving gross margin per månad
+const rebalanceToTarget = (b: BudgetData): BudgetData => {
+  const current = sumRevenue(b.monthlyData);
+  const target = b.targetRevenue ?? current;
+  if (!target || current === 0 || Math.abs(current - target) < 1) return normalizeTotals(b);
+  const scale = target / current;
+  const monthlyData = b.monthlyData.map(m => {
+    const revenue = Math.round(m.revenue * scale);
+    const grossMargin = m.grossMargin ?? (m.revenue > 0 ? Math.round((m.grossProfit / m.revenue) * 1000) / 10 : 0);
+    const grossProfit = Math.round(revenue * (grossMargin / 100));
+    const cogs = Math.max(0, revenue - grossProfit);
+    const totalOpex = m.personnel + m.marketing + m.office + m.otherOpex;
+    const ebit = grossProfit - totalOpex - m.depreciation;
+    const ebitMargin = revenue > 0 ? Math.round((ebit / revenue) * 1000) / 10 : 0;
+    const resultAfterFinancial = ebit + m.financialCosts;
+    return { ...m, revenue, grossProfit, cogs, ebit, ebitMargin, resultAfterFinancial };
+  });
+  return normalizeTotals({ ...b, monthlyData });
+};
+
 const computeCombined = (ip: BudgetData, op: BudgetData): BudgetData => {
   const combinedMonthly = ip.monthlyData.map((im, idx) => {
     const om = op.monthlyData[idx];
@@ -152,8 +172,8 @@ export const BudgetDashboard = () => {
               }
             : onepanBudget;
 
-          const nip = normalizeTotals(ip);
-          const nop = normalizeTotals(op);
+          const nip = rebalanceToTarget(normalizeTotals(ip));
+          const nop = rebalanceToTarget(normalizeTotals(op));
 
           setBudgetData({
             ipinium: nip,
@@ -511,26 +531,27 @@ export const BudgetDashboard = () => {
               <img src={onepanLogo} alt="OnePan" className="h-12 object-contain" />
             </div>
             <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={async () => {
-                  try {
-                    setIsSyncing(true);
-                    await syncData();
-                    toast({ title: "Synkat", description: "Fortnox-data synkad." });
-                  } catch (e) {
-                    console.error(e);
-                    toast({ title: "Fel", description: "Kunde inte synka Fortnox.", variant: "destructive" });
-                  } finally {
-                    setIsSyncing(false);
-                  }
-                }}
-                disabled={isSyncing}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                {isSyncing ? 'Synkar…' : 'Synka Fortnox'}
-              </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={async () => {
+                    try {
+                      setIsSyncing(true);
+                      const prevYear = new Date().getFullYear() - 1;
+                      await syncData(budget.company, prevYear);
+                      toast({ title: "Synkat", description: `Fortnox-data synkad för ${budget.company} (${prevYear}).` });
+                    } catch (e) {
+                      console.error(e);
+                      toast({ title: "Fel", description: "Kunde inte synka Fortnox.", variant: "destructive" });
+                    } finally {
+                      setIsSyncing(false);
+                    }
+                  }}
+                  disabled={isSyncing}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  {isSyncing ? 'Synkar…' : 'Synka Fortnox'}
+                </Button>
               <Button 
                 variant="outline" 
                 size="sm" 

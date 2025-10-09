@@ -35,8 +35,10 @@ export const useFortnoxData = (company: string, year: number) => {
 };
 
 export const useSyncFortnoxData = () => {
-  const syncData = async () => {
-    const { data, error } = await supabase.functions.invoke('fortnox-sync');
+  const syncData = async (company?: string, year?: number) => {
+    const { data, error } = await supabase.functions.invoke('fortnox-sync', {
+      body: { company, year },
+    });
     
     if (error) {
       console.error('Error syncing Fortnox data:', error);
