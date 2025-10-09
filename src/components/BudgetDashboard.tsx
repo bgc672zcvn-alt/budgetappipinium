@@ -467,6 +467,18 @@ export const BudgetDashboard = () => {
     checkAdminStatus();
   }, [checkAdminStatus]);
 
+  // Log total when view changes (dev mode)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const totals = {
+        revenue: budget.monthlyData.reduce((sum, m) => sum + m.revenue, 0),
+        ebit: budget.monthlyData.reduce((sum, m) => sum + m.ebit, 0),
+        result: budget.monthlyData.reduce((sum, m) => sum + m.resultAfterFinancial, 0),
+      };
+      console.log(`📊 Vy: ${view} | Total Revenue: ${totals.revenue.toLocaleString('sv-SE')} SEK`, totals);
+    }
+  }, [view, budget]);
+
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -513,7 +525,7 @@ export const BudgetDashboard = () => {
 
           <TabsContent value={view} className="space-y-6 mt-6">
             {/* Metrics */}
-            <BudgetMetrics budget={budget} />
+            <BudgetMetrics budget={budget} viewName={view === "combined" ? "Combined" : budget.company} />
 
             {/* Business Areas (only for Ipinium) */}
             {budget.businessAreas && (
@@ -541,7 +553,7 @@ export const BudgetDashboard = () => {
             )}
 
             {/* Table */}
-            <BudgetTable budget={budget} />
+            <BudgetTable budget={budget} viewName={view === "combined" ? "Combined" : budget.company} />
           </TabsContent>
         </Tabs>
       </div>

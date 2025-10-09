@@ -16,12 +16,16 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { useSyncFortnoxData } from "@/hooks/useFortnoxData";
 import { toast } from "sonner";
+import { getAnnualTotals } from "@/lib/budgetMath";
+import { Badge } from "@/components/ui/badge";
 
 interface BudgetTableProps {
   budget: BudgetData;
+  viewName?: string;
 }
 
-export const BudgetTable = ({ budget }: BudgetTableProps) => {
+export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
+  const totals = getAnnualTotals(budget);
   const currentYear = new Date().getFullYear();
   const previousYear = currentYear - 1;
   
@@ -254,28 +258,20 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
               </React.Fragment>
             ))}
             <TableRow className="bg-muted/50 font-bold border-t-2">
-              <TableCell className="sticky left-0 bg-muted z-20">Total (alla {budget.monthlyData.length} månader)</TableCell>
+              <TableCell className="sticky left-0 bg-muted z-20">
+                Total (alla 12 månader{viewName ? ` – ${viewName}` : ''})
+              </TableCell>
               <TableCell className="text-right">
-                {formatCurrency(
-                  budget.monthlyData.reduce((sum, m) => sum + m.revenue, 0)
-                )}
+                {formatCurrency(totals.revenue)}
               </TableCell>
               <TableCell className="text-right text-destructive">
-                {formatCurrency(
-                  budget.monthlyData.reduce((sum, m) => sum + m.cogs, 0)
-                )}
+                {formatCurrency(totals.cogs)}
               </TableCell>
               <TableCell className="text-right text-success">
-                {formatCurrency(
-                  budget.monthlyData.reduce((sum, m) => sum + m.grossProfit, 0)
-                )}
+                {formatCurrency(totals.grossProfit)}
               </TableCell>
               <TableCell className="text-right text-success">
-                {(
-                  (budget.monthlyData.reduce((sum, m) => sum + m.grossProfit, 0) /
-                    budget.monthlyData.reduce((sum, m) => sum + m.revenue, 0)) *
-                  100
-                ).toFixed(1)}%
+                {totals.revenue > 0 ? ((totals.grossProfit / totals.revenue) * 100).toFixed(1) : '0.0'}%
               </TableCell>
               <TableCell className="text-right">
                 {formatCurrency(
@@ -298,9 +294,7 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
                 )}
               </TableCell>
               <TableCell className="text-right text-destructive">
-                {formatCurrency(
-                  budget.monthlyData.reduce((sum, m) => sum + m.totalOpex, 0)
-                )}
+                {formatCurrency(totals.totalOpex)}
               </TableCell>
               <TableCell className="text-right">
                 {formatCurrency(
@@ -308,30 +302,20 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
                 )}
               </TableCell>
               <TableCell className="text-right text-accent">
-                {formatCurrency(
-                  budget.monthlyData.reduce((sum, m) => sum + m.ebit, 0)
-                )}
+                {formatCurrency(totals.ebit)}
               </TableCell>
               <TableCell className="text-right text-accent">
-                {(
-                  (budget.monthlyData.reduce((sum, m) => sum + m.ebit, 0) /
-                    budget.monthlyData.reduce((sum, m) => sum + m.revenue, 0)) *
-                  100
-                ).toFixed(1)}%
+                {totals.ebitMargin.toFixed(1)}%
               </TableCell>
               <TableCell className="text-right text-destructive">
-                {formatCurrency(
-                  budget.monthlyData.reduce((sum, m) => sum + m.financialCosts, 0)
-                )}
+                {formatCurrency(totals.financialCosts)}
               </TableCell>
               <TableCell className={`text-right font-semibold ${
-                budget.monthlyData.reduce((sum, m) => sum + m.resultAfterFinancial, 0) >= 0 
+                totals.resultAfterFinancial >= 0 
                   ? 'text-success' 
                   : 'text-destructive'
               }`}>
-                {formatCurrency(
-                  budget.monthlyData.reduce((sum, m) => sum + m.resultAfterFinancial, 0)
-                )}
+                {formatCurrency(totals.resultAfterFinancial)}
               </TableCell>
             </TableRow>
           </TableBody>
