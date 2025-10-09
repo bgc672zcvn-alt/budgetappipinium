@@ -26,12 +26,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const fortnoxApiKey = Deno.env.get('FORNOX_API_KEY');
+    const fortnoxAccessToken = Deno.env.get('FORTNOX_ACCESS_TOKEN');
+    const fortnoxClientId = Deno.env.get('FORTNOX_CLIENT_ID');
+    const fortnoxClientSecret = Deno.env.get('FORTNOX_CLIENT_SECRET');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!fortnoxApiKey) {
-      throw new Error('FORNOX_API_KEY is not configured');
+    if (!fortnoxAccessToken) {
+      throw new Error('FORTNOX_ACCESS_TOKEN is not configured');
+    }
+
+    if (!fortnoxClientId && !fortnoxClientSecret) {
+      throw new Error('FORTNOX_CLIENT_ID or FORTNOX_CLIENT_SECRET must be configured');
     }
 
     if (!supabaseUrl || !supabaseServiceRoleKey) {
@@ -40,16 +46,21 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
+    // Build Fortnox headers once
+    const fortnoxHeaders: Record<string, string> = {
+      'Access-Token': fortnoxAccessToken,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+    if (fortnoxClientId) fortnoxHeaders['Client-Id'] = fortnoxClientId;
+    if (fortnoxClientSecret) fortnoxHeaders['Client-Secret'] = fortnoxClientSecret;
+
     console.log('Starting Fortnox data sync...');
 
     // Get financial years from Fortnox
     const financialYearsResponse = await fetch('https://api.fortnox.se/3/financialyears', {
       method: 'GET',
-      headers: {
-        'Access-Token': fortnoxApiKey,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: fortnoxHeaders,
     });
 
     if (!financialYearsResponse.ok) {
@@ -64,11 +75,7 @@ Deno.serve(async (req) => {
     // Get accounts from Fortnox
     const accountsResponse = await fetch('https://api.fortnox.se/3/accounts', {
       method: 'GET',
-      headers: {
-        'Access-Token': fortnoxApiKey,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: fortnoxHeaders,
     });
 
     if (!accountsResponse.ok) {
