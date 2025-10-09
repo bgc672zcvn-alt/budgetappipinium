@@ -254,7 +254,7 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
               </React.Fragment>
             ))}
             <TableRow className="bg-muted/50 font-bold border-t-2">
-              <TableCell className="sticky left-0 bg-muted z-20">Total</TableCell>
+              <TableCell className="sticky left-0 bg-muted z-20">Total (alla {budget.monthlyData.length} månader)</TableCell>
               <TableCell className="text-right">
                 {formatCurrency(
                   budget.monthlyData.reduce((sum, m) => sum + m.revenue, 0)
