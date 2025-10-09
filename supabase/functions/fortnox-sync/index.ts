@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    // Build Fortnox headers once
+    // Build Fortnox headers enligt API dokumentation
     const fortnoxHeaders: Record<string, string> = {
       'Access-Token': fortnoxAccessToken,
       'Client-Secret': fortnoxClientSecret,
@@ -62,7 +62,9 @@ Deno.serve(async (req) => {
       'Accept': 'application/json',
     };
     
-    console.log('Using headers:', Object.keys(fortnoxHeaders));
+    console.log('Headers configured with Access-Token and Client-Secret');
+    console.log('Access-Token length:', fortnoxAccessToken.length);
+    console.log('Client-Secret length:', fortnoxClientSecret.length);
 
     console.log('Starting Fortnox data sync...');
 
