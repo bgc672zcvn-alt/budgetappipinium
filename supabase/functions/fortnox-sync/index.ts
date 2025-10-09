@@ -32,6 +32,14 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
+    console.log('Environment check:', {
+      hasAccessToken: !!fortnoxAccessToken,
+      hasClientId: !!fortnoxClientId, 
+      hasClientSecret: !!fortnoxClientSecret,
+      accessTokenLength: fortnoxAccessToken?.length || 0,
+      clientSecretLength: fortnoxClientSecret?.length || 0
+    });
+
     if (!fortnoxAccessToken) {
       throw new Error('FORTNOX_ACCESS_TOKEN is not configured');
     }
@@ -49,11 +57,12 @@ Deno.serve(async (req) => {
     // Build Fortnox headers once
     const fortnoxHeaders: Record<string, string> = {
       'Access-Token': fortnoxAccessToken,
+      'Client-Secret': fortnoxClientSecret,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
-    if (fortnoxClientId) fortnoxHeaders['Client-Id'] = fortnoxClientId;
-    if (fortnoxClientSecret) fortnoxHeaders['Client-Secret'] = fortnoxClientSecret;
+    
+    console.log('Using headers:', Object.keys(fortnoxHeaders));
 
     console.log('Starting Fortnox data sync...');
 
