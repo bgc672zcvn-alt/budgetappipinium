@@ -150,20 +150,8 @@ Deno.serve(async (req) => {
     const financialYearsData = await financialYearsResponse.json();
     console.log('Financial years:', financialYearsData);
 
-    // Get accounts from Fortnox
-    const accountsResponse = await fetch('https://api.fortnox.se/3/accounts', {
-      method: 'GET',
-      headers: fortnoxHeaders,
-    });
-
-    if (!accountsResponse.ok) {
-      const errorText = await accountsResponse.text();
-      console.error('Fortnox accounts API error:', errorText);
-      throw new Error(`Fortnox accounts API error: ${accountsResponse.status} - ${errorText}`);
-    }
-
-    const accountsData = await accountsResponse.json();
-    console.log('Accounts fetched:', accountsData.Accounts?.length || 0);
+    // Skip accounts call (not needed for aggregation, reduces rate-limit pressure)
+    // Previously: GET /accounts used only for logging
 
     // Process each month of the previous year
     const currentYear = new Date().getFullYear();
@@ -194,16 +182,32 @@ Deno.serve(async (req) => {
         let page = 1;
         let totalPages = 1;
         do {
-          const vouchersResp = await fetch(`https://api.fortnox.se/3/vouchers?financialyear=${fyId}&fromdate=${fromDate}&todate=${toDate}&page=${page}`, {
-            method: 'GET',
-            headers: fortnoxHeaders,
-          });
-
-          if (!vouchersResp.ok) {
+          let attempt = 0;
+          let vouchersResp: Response | null = null;
+          do {
+            vouchersResp = await fetch(`https://api.fortnox.se/3/vouchers?financialyear=${fyId}&fromdate=${fromDate}&todate=${toDate}&page=${page}`, {
+              method: 'GET',
+              headers: fortnoxHeaders,
+            });
+            if (vouchersResp.ok) break;
+            const status = vouchersResp.status;
             const errTxt = await vouchersResp.text();
-            console.error(`Vouchers API error for ${fromDate}-${toDate} p${page}:`, errTxt);
+            console.error(`Vouchers API error for ${fromDate}-${toDate} p${page} (attempt ${attempt + 1}):`, status, errTxt);
+            if (status === 429 && attempt < 2) {
+              // backoff
+              await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+              attempt++;
+              continue;
+            }
+            // Non-retriable
+            vouchersResp = null;
+            break;
+          } while (attempt < 3);
+
+          if (!vouchersResp) {
             break;
           }
+
           const vouchersData = await vouchersResp.json();
           const meta = vouchersData?.MetaInformation || vouchersData?.meta || {};
           totalPages = parseInt(meta['@TotalPages'] || meta.total_pages || '1') || 1;
@@ -234,6 +238,8 @@ Deno.serve(async (req) => {
           }
 
           page += 1;
+          // small delay to avoid rate limit
+          await new Promise((r) => setTimeout(r, 200));
         } while (page <= totalPages);
       } else {
         console.warn('Could not determine financial year ID for targetYear', targetYear);
@@ -274,6 +280,9 @@ Deno.serve(async (req) => {
         console.log(`Synced data for ${targetYear}-${month}`, data);
         monthlyData.push(data);
       }
+
+      // small delay between months to avoid rate limits
+      await new Promise((r) => setTimeout(r, 200));
     }
 
     return new Response(

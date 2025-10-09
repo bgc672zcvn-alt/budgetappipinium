@@ -35,9 +35,28 @@ const rebalanceToTarget = (b: BudgetData): BudgetData => {
   const current = sumRevenue(b.monthlyData);
   const target = b.targetRevenue ?? current;
   if (!target || current === 0 || Math.abs(current - target) < 1) return normalizeTotals(b);
+
   const scale = target / current;
+  // 1) beräkna skalade värden och rest (fraktion)
+  const scaled = b.monthlyData.map((m) => {
+    const raw = m.revenue * scale;
+    const floor = Math.floor(raw);
+    const frac = raw - floor;
+    return { idx: m.month, raw, floor, frac };
+  });
+  // 2) initial summering och diff
+  let sumFloors = scaled.reduce((s, x) => s + x.floor, 0);
+  let diff = Math.round(target - sumFloors);
+  // 3) fördela diff genom att lägga till 1 kr till de största fraktionerna
+  const order = [...scaled].sort((a, b2) => b2.frac - a.frac);
+  for (let i = 0; i < Math.abs(diff); i++) {
+    const item = order[i % order.length];
+    item.floor += diff > 0 ? 1 : -1;
+  }
+  const revenuePerMonth = new Map(order.map(o => [o.idx, o.floor]));
+
   const monthlyData = b.monthlyData.map(m => {
-    const revenue = Math.round(m.revenue * scale);
+    const revenue = revenuePerMonth.get(m.month) ?? Math.round(m.revenue * scale);
     const grossMargin = m.grossMargin ?? (m.revenue > 0 ? Math.round((m.grossProfit / m.revenue) * 1000) / 10 : 0);
     const grossProfit = Math.round(revenue * (grossMargin / 100));
     const cogs = Math.max(0, revenue - grossProfit);
