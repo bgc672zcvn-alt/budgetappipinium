@@ -556,9 +556,9 @@ export const BudgetDashboard = () => {
                   onClick={async () => {
                     try {
                       setIsSyncing(true);
-                      const prevYear = new Date().getFullYear() - 1;
-                      await syncData(budget.company, prevYear);
-                      toast({ title: "Synkat", description: `Fortnox-data synkad för ${budget.company} (${prevYear}).` });
+                      const year = new Date().getFullYear();
+                      await syncData(budget.company, year);
+                      toast({ title: "Synkat", description: `Fortnox-data synkad för ${budget.company} (${year}).` });
                     } catch (e) {
                       console.error(e);
                       toast({ title: "Fel", description: "Kunde inte synka Fortnox.", variant: "destructive" });

@@ -27,17 +27,17 @@ interface BudgetTableProps {
 export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
   const totals = getAnnualTotals(budget);
   const currentYear = new Date().getFullYear();
-  const previousYear = currentYear - 1;
+  const targetYear = currentYear;
   
-  const { data: historicalData, isLoading, refetch } = useFortnoxData(budget.company, previousYear);
+  const { data: historicalData, isLoading, refetch } = useFortnoxData(budget.company, targetYear);
   const { syncData } = useSyncFortnoxData();
   
   const handleSync = async () => {
     try {
       toast.loading("Synkar data från Fortnox...");
-      await syncData(budget.company, previousYear);
+      await syncData(budget.company, targetYear);
       await refetch();
-      toast.success(`Data synkad från Fortnox för ${budget.company} (${previousYear}).`);
+      toast.success(`Data synkad från Fortnox för ${budget.company} (${targetYear}).`);
     } catch (error) {
       console.error("Error syncing:", error);
       toast.error("Kunde inte synka data från Fortnox");
@@ -249,7 +249,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
               </TableRow>
               {historicalData && historicalData.length > 0 && (
                 <ComparisonRow
-                  label={`${month.month} ${previousYear}`}
+                  label={`${month.month} ${targetYear}`}
                   currentYearData={[budget.monthlyData[index].revenue]}
                   previousYearData={[getPreviousYearData('revenue')[index]]}
                   formatValue={formatCurrency}
