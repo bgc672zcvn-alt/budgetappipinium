@@ -16,10 +16,11 @@ export const useFortnoxConnection = () => {
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event?.data?.type === 'fortnox_connected') {
-        window.location.reload();
+        toast({ title: 'Ansluten!', description: 'Fortnox har anslutits' });
+        setTimeout(() => window.location.reload(), 500);
       }
-      if (event?.data?.type === 'fortnox_connected_error') {
-        toast({ title: 'Fortnox-anslutning misslyckades', description: 'Försök igen.', variant: 'destructive' });
+      if (event?.data?.type === 'fortnox_error') {
+        toast({ title: 'Fel', description: 'Kunde inte ansluta till Fortnox', variant: 'destructive' });
       }
     };
     window.addEventListener('message', handler);

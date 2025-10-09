@@ -130,36 +130,77 @@ Deno.serve(async (req) => {
 
     console.log('Tokens saved successfully for company:', company);
 
-    // Return small HTML that notifies opener and closes popup, fallback to appOrigin
-    const successHtml = `<!doctype html><html><body><script>
-      try {
-        if (window.opener) {
-          window.opener.postMessage({ type: 'fortnox_connected', company: ${JSON.stringify(company)} }, '*');
-          window.close();
-        } else if (${JSON.stringify(appOrigin)}){
-          location.href = ${JSON.stringify(appOrigin)} + '?fortnox_connected=true&company=' + encodeURIComponent(${JSON.stringify(company)});
-        } else {
-          document.body.innerText = 'Fortnox anslutet. Du kan stänga fönstret.';
-        }
-      } catch (e) {
-        if (${JSON.stringify(appOrigin)}) location.href = ${JSON.stringify(appOrigin)};
+    // Return HTML that closes popup and notifies opener
+    const successHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Fortnox Connected</title></head>
+<body>
+<script>
+(function() {
+  try {
+    if (window.opener) {
+      window.opener.postMessage({ 
+        type: 'fortnox_connected', 
+        company: decodeURIComponent('${encodeURIComponent(company)}')
+      }, '*');
+      setTimeout(function() { window.close(); }, 100);
+    } else {
+      var origin = '${appOrigin || ''}';
+      if (origin) {
+        window.location.href = origin + '?fortnox_connected=true&company=' + encodeURIComponent('${encodeURIComponent(company)}');
+      } else {
+        document.body.innerHTML = '<p style="font-family:sans-serif;text-align:center;margin-top:50px;">Fortnox anslutet! Du kan stänga detta fönster.</p>';
       }
-    <\/script></body></html>`;
+    }
+  } catch (e) {
+    console.error(e);
+    document.body.innerHTML = '<p style="font-family:sans-serif;text-align:center;margin-top:50px;">Fortnox anslutet! Du kan stänga detta fönster.</p>';
+  }
+})();
+</script>
+</body>
+</html>`;
 
-    return new Response(successHtml, { headers: { ...corsHeaders, 'Content-Type': 'text/html' }, status: 200 });
+    return new Response(successHtml, { 
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'text/html; charset=utf-8' 
+      }, 
+      status: 200 
+    });
 
   } catch (error) {
     console.error('Error in fortnox-callback:', error);
-    const errorHtml = `<!doctype html><html><body><script>
-      try {
-        if (window.opener) {
-          window.opener.postMessage({ type: 'fortnox_connected_error', message: 'oauth_callback_failed' }, '*');
-          window.close();
-        } else {
-          document.body.innerText = 'Fel vid Fortnox-anslutning. Du kan stänga fönstret.';
-        }
-      } catch (e) {}
-    <\/script></body></html>`;
-    return new Response(errorHtml, { headers: { ...corsHeaders, 'Content-Type': 'text/html' }, status: 200 });
+    const errorHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Error</title></head>
+<body>
+<script>
+(function() {
+  try {
+    if (window.opener) {
+      window.opener.postMessage({ 
+        type: 'fortnox_error', 
+        message: 'callback_failed' 
+      }, '*');
+      setTimeout(function() { window.close(); }, 100);
+    } else {
+      document.body.innerHTML = '<p style="font-family:sans-serif;text-align:center;margin-top:50px;color:red;">Fel vid anslutning. Försök igen.</p>';
+    }
+  } catch (e) {
+    document.body.innerHTML = '<p style="font-family:sans-serif;text-align:center;margin-top:50px;color:red;">Fel vid anslutning. Försök igen.</p>';
+  }
+})();
+</script>
+</body>
+</html>`;
+    
+    return new Response(errorHtml, { 
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'text/html; charset=utf-8' 
+      }, 
+      status: 200 
+    });
   }
 });
