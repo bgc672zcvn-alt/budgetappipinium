@@ -98,6 +98,54 @@ export type Database = {
         }
         Relationships: []
       }
+      fortnox_historical_data: {
+        Row: {
+          cogs: number
+          company: string
+          created_at: string
+          gross_profit: number
+          id: string
+          marketing: number
+          month: number
+          office: number
+          other_opex: number
+          personnel: number
+          revenue: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          cogs?: number
+          company: string
+          created_at?: string
+          gross_profit?: number
+          id?: string
+          marketing?: number
+          month: number
+          office?: number
+          other_opex?: number
+          personnel?: number
+          revenue?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          cogs?: number
+          company?: string
+          created_at?: string
+          gross_profit?: number
+          id?: string
+          marketing?: number
+          month?: number
+          office?: number
+          other_opex?: number
+          personnel?: number
+          revenue?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
