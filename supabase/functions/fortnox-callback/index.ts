@@ -17,12 +17,20 @@ Deno.serve(async (req) => {
     const state = url.searchParams.get('state');
     const error = url.searchParams.get('error');
 
+    console.log('Callback received:', { 
+      hasCode: !!code, 
+      hasState: !!state, 
+      error,
+      fullUrl: req.url 
+    });
+
     if (error) {
       console.error('OAuth error:', error);
       return Response.redirect(`${Deno.env.get('SUPABASE_URL')!.replace('.supabase.co', '.lovable.app')}/?error=oauth_failed`);
     }
 
     if (!code || !state) {
+      console.error('Missing parameters:', { code: !!code, state: !!state });
       throw new Error('Missing code or state parameter');
     }
 
@@ -42,6 +50,13 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const redirectUri = `${supabaseUrl}/functions/v1/fortnox-callback`;
 
+    console.log('Token exchange params:', {
+      redirectUri,
+      hasClientId: !!clientId,
+      hasClientSecret: !!clientSecret,
+      codeLength: code.length
+    });
+
     // Exchange authorization code for tokens
     const tokenResponse = await fetch('https://apps.fortnox.se/oauth-v1/token', {
       method: 'POST',
@@ -60,7 +75,8 @@ Deno.serve(async (req) => {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error('Token exchange failed:', errorText);
-      throw new Error(`Token exchange failed: ${tokenResponse.status}`);
+      console.error('Used redirect_uri:', redirectUri);
+      throw new Error(`Token exchange failed: ${tokenResponse.status} - ${errorText}`);
     }
 
     const tokenData = await tokenResponse.json();
