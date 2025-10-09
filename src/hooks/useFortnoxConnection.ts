@@ -27,6 +27,18 @@ export const useFortnoxConnection = () => {
     return () => window.removeEventListener('message', handler);
   }, [toast]);
 
+  // Fallback: Check URL params for callback success (if popup was blocked)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('fortnox_connected') === 'true') {
+      const company = params.get('company');
+      toast({ title: 'Ansluten!', description: `Fortnox ansluten för ${company || 'företaget'}` });
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+      setTimeout(() => window.location.reload(), 500);
+    }
+  }, [toast]);
+
   const checkConnection = useCallback(async (company: string): Promise<FortnoxConnectionStatus> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();

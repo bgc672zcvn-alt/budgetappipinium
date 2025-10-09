@@ -154,23 +154,74 @@ Deno.serve(async (req) => {
 
     // Process each month of the previous year
     const currentYear = new Date().getFullYear();
-    const previousYear = currentYear - 1;
+    const targetYear = 2024; // Fetch 2024 data
 
-    // For now, let's store sample data structure
-    // In a real implementation, you would fetch actual financial data from Fortnox
     const monthlyData = [];
     for (let month = 1; month <= 12; month++) {
+      // Fetch financial data for each month using Fortnox API
+      const fromDate = `${targetYear}-${String(month).padStart(2, '0')}-01`;
+      const lastDay = new Date(targetYear, month, 0).getDate();
+      const toDate = `${targetYear}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+      console.log(`Fetching data for ${fromDate} to ${toDate}`);
+
+      // Fetch financial summary for the month
+      const financeResponse = await fetch(
+        `https://api.fortnox.se/3/financialyearsum?date=${fromDate}`,
+        {
+          method: 'GET',
+          headers: fortnoxHeaders,
+        }
+      );
+
+      if (!financeResponse.ok) {
+        console.error(`Failed to fetch finance data for month ${month}`);
+        continue;
+      }
+
+      const financeData = await financeResponse.json();
+      const accounts = financeData.FinancialYearSums || [];
+
+      // Calculate totals by account ranges (BAS kontoplan)
+      let revenue = 0;        // 3000-3999 Intäkter
+      let cogs = 0;          // 4000-4999 Kostnad för sålda varor
+      let personnel = 0;     // 7000-7699 Personalkostnader
+      let marketing = 0;     // 6000-6099 Marknadsföring/försäljning
+      let office = 0;        // 5000-5999 + 6100-6999 Lokalkostnader m.m.
+      let other_opex = 0;    // 7700-7999 Övriga rörelsekostnader
+
+      for (const account of accounts) {
+        const accountNum = parseInt(account.Account || '0');
+        const balance = parseFloat(account.Balance || '0');
+
+        if (accountNum >= 3000 && accountNum <= 3999) {
+          revenue += Math.abs(balance); // Revenue accounts are negative in balance
+        } else if (accountNum >= 4000 && accountNum <= 4999) {
+          cogs += Math.abs(balance);
+        } else if (accountNum >= 7000 && accountNum <= 7699) {
+          personnel += Math.abs(balance);
+        } else if (accountNum >= 6000 && accountNum <= 6099) {
+          marketing += Math.abs(balance);
+        } else if ((accountNum >= 5000 && accountNum <= 5999) || (accountNum >= 6100 && accountNum <= 6999)) {
+          office += Math.abs(balance);
+        } else if (accountNum >= 7700 && accountNum <= 7999) {
+          other_opex += Math.abs(balance);
+        }
+      }
+
+      const gross_profit = revenue - cogs;
+
       const data = {
-        company: 'Ipinium AB', // This should come from the request or be configurable
-        year: previousYear,
+        company: tokenData.company,
+        year: targetYear,
         month: month,
-        revenue: 0, // Would be calculated from Fortnox accounts
-        cogs: 0,
-        gross_profit: 0,
-        personnel: 0,
-        marketing: 0,
-        office: 0,
-        other_opex: 0,
+        revenue: Math.round(revenue),
+        cogs: Math.round(cogs),
+        gross_profit: Math.round(gross_profit),
+        personnel: Math.round(personnel),
+        marketing: Math.round(marketing),
+        office: Math.round(office),
+        other_opex: Math.round(other_opex),
       };
 
       // Upsert data to database
@@ -183,7 +234,7 @@ Deno.serve(async (req) => {
       if (error) {
         console.error('Error inserting data for month', month, ':', error);
       } else {
-        console.log(`Synced data for ${previousYear}-${month}`);
+        console.log(`Synced data for ${targetYear}-${month}`, data);
         monthlyData.push(data);
       }
     }
