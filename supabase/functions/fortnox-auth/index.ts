@@ -45,10 +45,14 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
+    // Determine app origin for redirect back after callback
+    const appOrigin = req.headers.get('origin') || Deno.env.get('APP_URL') || '';
+
     // Construct OAuth authorization URL
     const redirectUri = `${supabaseUrl}/functions/v1/fortnox-callback`;
     const scope = 'companyinformation bookkeeping'; // Add scopes needed
-    const state = `${user.id}:${company}`; // Store user_id and company in state
+    const statePayload = { u: user.id, c: company, o: appOrigin };
+    const state = btoa(JSON.stringify(statePayload));
 
     const authUrl = new URL('https://apps.fortnox.se/oauth-v1/auth');
     authUrl.searchParams.set('client_id', clientId);
@@ -57,6 +61,7 @@ Deno.serve(async (req) => {
     authUrl.searchParams.set('state', state);
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('access_type', 'offline'); // Request refresh token
+    authUrl.searchParams.set('account_type', 'service');
 
     console.log('Generated auth URL for company:', company);
 

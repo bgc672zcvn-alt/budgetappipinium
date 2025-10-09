@@ -34,8 +34,19 @@ Deno.serve(async (req) => {
       throw new Error('Missing code or state parameter');
     }
 
-    // Parse state to get user_id and company
-    const [userId, company] = state.split(':');
+    // Parse state (base64-encoded JSON) to get user_id, company, and app origin
+    let userId = '';
+    let company = '';
+    let appOrigin = '';
+    try {
+      const decoded = JSON.parse(atob(state));
+      userId = decoded.u;
+      company = decoded.c;
+      appOrigin = decoded.o || '';
+    } catch (e) {
+      console.error('Failed to parse state:', e);
+      throw new Error('Invalid state parameter');
+    }
     if (!userId || !company) {
       throw new Error('Invalid state parameter');
     }
@@ -57,18 +68,21 @@ Deno.serve(async (req) => {
       codeLength: code.length
     });
 
-    // Exchange authorization code for tokens
+    // Build Basic auth header: base64(client_id:client_secret)
+    const credentials = btoa(`${clientId}:${clientSecret}`);
+
+    // Exchange authorization code for tokens (Fortnox requires Basic auth)
     const tokenResponse = await fetch('https://apps.fortnox.se/oauth-v1/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${credentials}`,
+        'Accept': 'application/json',
       },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code: code,
         redirect_uri: redirectUri,
-        client_id: clientId,
-        client_secret: clientSecret,
       }),
     });
 
@@ -116,13 +130,36 @@ Deno.serve(async (req) => {
 
     console.log('Tokens saved successfully for company:', company);
 
-    // Redirect back to app with success message
-    const appUrl = supabaseUrl.replace('.supabase.co', '.lovable.app');
-    return Response.redirect(`${appUrl}/?fortnox_connected=true&company=${encodeURIComponent(company)}`);
+    // Return small HTML that notifies opener and closes popup, fallback to appOrigin
+    const successHtml = `<!doctype html><html><body><script>
+      try {
+        if (window.opener) {
+          window.opener.postMessage({ type: 'fortnox_connected', company: ${JSON.stringify(company)} }, '*');
+          window.close();
+        } else if (${JSON.stringify(appOrigin)}){
+          location.href = ${JSON.stringify(appOrigin)} + '?fortnox_connected=true&company=' + encodeURIComponent(${JSON.stringify(company)});
+        } else {
+          document.body.innerText = 'Fortnox anslutet. Du kan stänga fönstret.';
+        }
+      } catch (e) {
+        if (${JSON.stringify(appOrigin)}) location.href = ${JSON.stringify(appOrigin)};
+      }
+    <\/script></body></html>`;
+
+    return new Response(successHtml, { headers: { ...corsHeaders, 'Content-Type': 'text/html' }, status: 200 });
 
   } catch (error) {
     console.error('Error in fortnox-callback:', error);
-    const appUrl = Deno.env.get('SUPABASE_URL')!.replace('.supabase.co', '.lovable.app');
-    return Response.redirect(`${appUrl}/?error=oauth_callback_failed`);
+    const errorHtml = `<!doctype html><html><body><script>
+      try {
+        if (window.opener) {
+          window.opener.postMessage({ type: 'fortnox_connected_error', message: 'oauth_callback_failed' }, '*');
+          window.close();
+        } else {
+          document.body.innerText = 'Fel vid Fortnox-anslutning. Du kan stänga fönstret.';
+        }
+      } catch (e) {}
+    <\/script></body></html>`;
+    return new Response(errorHtml, { headers: { ...corsHeaders, 'Content-Type': 'text/html' }, status: 200 });
   }
 });

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -11,6 +11,20 @@ export interface FortnoxConnectionStatus {
 export const useFortnoxConnection = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Listen for popup callback message to refresh status instantly
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event?.data?.type === 'fortnox_connected') {
+        window.location.reload();
+      }
+      if (event?.data?.type === 'fortnox_connected_error') {
+        toast({ title: 'Fortnox-anslutning misslyckades', description: 'Försök igen.', variant: 'destructive' });
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [toast]);
 
   const checkConnection = useCallback(async (company: string): Promise<FortnoxConnectionStatus> => {
     try {
