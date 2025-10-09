@@ -19,6 +19,7 @@ import type { User } from "@supabase/supabase-js";
 import ipiniumLogo from "@/assets/ipinium-logo.jpg";
 import onepanLogo from "@/assets/onepan-logo.png";
 import { useSyncFortnoxData } from "@/hooks/useFortnoxData";
+import { FortnoxConnection } from "./FortnoxConnection";
 
 type CompanyView = "ipinium" | "onepan" | "combined";
 
@@ -563,6 +564,11 @@ export const BudgetDashboard = () => {
           </TabsList>
 
           <TabsContent value={view} className="space-y-6 mt-6">
+            {/* Fortnox Connection Status */}
+            {view !== "combined" && (
+              <FortnoxConnection company={budget.company} />
+            )}
+
             {/* Metrics */}
             <BudgetMetrics budget={budget} viewName={view === "combined" ? "Combined" : budget.company} />
 

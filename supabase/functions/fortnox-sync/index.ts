@@ -26,45 +26,99 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const fortnoxAccessToken = Deno.env.get('FORTNOX_ACCESS_TOKEN');
-    const fortnoxClientId = Deno.env.get('FORTNOX_CLIENT_ID');
-    const fortnoxClientSecret = Deno.env.get('FORTNOX_CLIENT_SECRET');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    console.log('Environment check:', {
-      hasAccessToken: !!fortnoxAccessToken,
-      hasClientId: !!fortnoxClientId, 
-      hasClientSecret: !!fortnoxClientSecret,
-      accessTokenLength: fortnoxAccessToken?.length || 0,
-      clientSecretLength: fortnoxClientSecret?.length || 0
-    });
-
-    if (!fortnoxAccessToken) {
-      throw new Error('FORTNOX_ACCESS_TOKEN is not configured');
-    }
-
-    if (!fortnoxClientSecret) {
-      throw new Error('FORTNOX_CLIENT_SECRET is not configured');
-    }
 
     if (!supabaseUrl || !supabaseServiceRoleKey) {
       throw new Error('Supabase environment variables are not configured');
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    // Build Fortnox headers enligt API dokumentation
+    // Get user from authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header');
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (userError || !user) {
+      throw new Error('Unauthorized');
+    }
+
+    // Get Fortnox tokens from database
+    const { data: tokenData, error: tokenError } = await supabaseAdmin
+      .from('fortnox_tokens')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('company', 'Ipinium AB') // TODO: Make this dynamic based on company parameter
+      .maybeSingle();
+
+    if (tokenError || !tokenData) {
+      throw new Error('No Fortnox connection found. Please connect Fortnox first.');
+    }
+
+    // Check if token is expired
+    const expiresAt = new Date(tokenData.expires_at);
+    let accessToken = tokenData.access_token;
+
+    if (expiresAt < new Date()) {
+      // Token expired, refresh it
+      console.log('Token expired, refreshing...');
+      
+      const clientId = Deno.env.get('FORTNOX_CLIENT_ID');
+      const clientSecret = Deno.env.get('FORTNOX_CLIENT_SECRET');
+
+      if (!clientId || !clientSecret) {
+        throw new Error('Fortnox credentials not configured');
+      }
+
+      const refreshResponse = await fetch('https://apps.fortnox.se/oauth-v1/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: tokenData.refresh_token,
+          client_id: clientId,
+          client_secret: clientSecret,
+        }),
+      });
+
+      if (!refreshResponse.ok) {
+        throw new Error('Failed to refresh token');
+      }
+
+      const refreshData = await refreshResponse.json();
+      accessToken = refreshData.access_token;
+
+      // Update token in database
+      const newExpiresAt = new Date();
+      newExpiresAt.setSeconds(newExpiresAt.getSeconds() + refreshData.expires_in);
+
+      await supabaseAdmin
+        .from('fortnox_tokens')
+        .update({
+          access_token: accessToken,
+          expires_at: newExpiresAt.toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', tokenData.id);
+
+      console.log('Token refreshed successfully');
+    }
+
+    // Build Fortnox headers using OAuth access token
     const fortnoxHeaders: Record<string, string> = {
-      'Access-Token': fortnoxAccessToken,
-      'Client-Secret': fortnoxClientSecret,
+      'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
     
-    console.log('Headers configured with Access-Token and Client-Secret');
-    console.log('Access-Token length:', fortnoxAccessToken.length);
-    console.log('Client-Secret length:', fortnoxClientSecret.length);
+    console.log('Using OAuth access token for Fortnox API');
 
     console.log('Starting Fortnox data sync...');
 
@@ -120,7 +174,7 @@ Deno.serve(async (req) => {
       };
 
       // Upsert data to database
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('fortnox_historical_data')
         .upsert(data, {
           onConflict: 'company,year,month',
