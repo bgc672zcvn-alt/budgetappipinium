@@ -101,7 +101,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
               <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Result</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <TableBody aria-live="polite">
             {budget.monthlyData.map((month, index) => (
               <React.Fragment key={month.month}>
                 <TableRow className="hover:bg-muted/30">
@@ -112,7 +112,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
                     <CommentButton
                       company={budget.company}
                       field="revenue"
-                      month={month.month}
+                      month={`${month.month} ${targetYear}`}
                       value={month.revenue}
                     />
                   </div>
@@ -123,7 +123,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
                     <CommentButton
                       company={budget.company}
                       field="cogs"
-                      month={month.month}
+                      month={`${month.month} ${targetYear}`}
                       value={month.cogs}
                     />
                   </div>
@@ -134,7 +134,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
                     <CommentButton
                       company={budget.company}
                       field="grossProfit"
-                      month={month.month}
+                      month={`${month.month} ${targetYear}`}
                       value={month.grossProfit}
                     />
                   </div>
@@ -148,7 +148,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
                     <CommentButton
                       company={budget.company}
                       field="personnel"
-                      month={month.month}
+                      month={`${month.month} ${targetYear}`}
                       value={month.personnel}
                     />
                   </div>
@@ -159,7 +159,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
                     <CommentButton
                       company={budget.company}
                       field="marketing"
-                      month={month.month}
+                      month={`${month.month} ${targetYear}`}
                       value={month.marketing}
                     />
                   </div>
@@ -170,7 +170,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
                     <CommentButton
                       company={budget.company}
                       field="office"
-                      month={month.month}
+                      month={`${month.month} ${targetYear}`}
                       value={month.office}
                     />
                   </div>
@@ -181,7 +181,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
                     <CommentButton
                       company={budget.company}
                       field="otherOpex"
-                      month={month.month}
+                      month={`${month.month} ${targetYear}`}
                       value={month.otherOpex}
                     />
                   </div>
@@ -192,7 +192,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
                     <CommentButton
                       company={budget.company}
                       field="totalOpex"
-                      month={month.month}
+                      month={`${month.month} ${targetYear}`}
                       value={month.totalOpex}
                     />
                   </div>
@@ -203,7 +203,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
                     <CommentButton
                       company={budget.company}
                       field="depreciation"
-                      month={month.month}
+                      month={`${month.month} ${targetYear}`}
                       value={month.depreciation}
                     />
                   </div>
@@ -214,7 +214,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
                     <CommentButton
                       company={budget.company}
                       field="ebit"
-                      month={month.month}
+                      month={`${month.month} ${targetYear}`}
                       value={month.ebit}
                     />
                   </div>
@@ -228,7 +228,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
                     <CommentButton
                       company={budget.company}
                       field="financialCosts"
-                      month={month.month}
+                      month={`${month.month} ${targetYear}`}
                       value={month.financialCosts}
                     />
                   </div>
@@ -241,20 +241,18 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
                     <CommentButton
                       company={budget.company}
                       field="resultAfterFinancial"
-                      month={month.month}
+                      month={`${month.month} ${targetYear}`}
                       value={month.resultAfterFinancial}
                     />
                   </div>
                 </TableCell>
               </TableRow>
-              {historicalData && historicalData.length > 0 && (
-                <ComparisonRow
-                  label={`${month.month} ${targetYear}`}
-                  currentYearData={[budget.monthlyData[index].revenue]}
-                  previousYearData={[getPreviousYearData('revenue')[index]]}
-                  formatValue={formatCurrency}
-                />
-              )}
+              <ComparisonRow
+                label={`${month.month} ${targetYear}`}
+                currentYearData={[budget.monthlyData[index].revenue]}
+                previousYearData={[getPreviousYearData('revenue')[index]]}
+                formatValue={formatCurrency}
+              />
               </React.Fragment>
             ))}
             <TableRow className="bg-muted/50 font-bold border-t-2">

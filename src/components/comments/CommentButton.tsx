@@ -139,7 +139,7 @@ export const CommentButton = ({ company, field, month, value }: CommentButtonPro
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-96 p-4" align="start">
+      <PopoverContent className="w-96 p-4" align="end" side="top" sideOffset={8}>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold text-sm">
@@ -147,7 +147,9 @@ export const CommentButton = ({ company, field, month, value }: CommentButtonPro
               {month && ` - ${month}`}
             </h4>
             <span className="text-xs text-muted-foreground">
-              Värde: {typeof value === "number" ? value.toLocaleString("sv-SE") : value}
+              Värde: {typeof value === "number" 
+                ? new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK", maximumFractionDigits: 0 }).format(value as number) 
+                : value}
             </span>
           </div>
 
