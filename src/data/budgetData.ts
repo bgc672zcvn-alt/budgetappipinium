@@ -8,41 +8,46 @@ const months = [
 // Ipinium Budget - Based on actuals aug 2025: 2.1M/month, targeting 28M SEK for 2026
 // Current performance: ~48% gross margin, 5% EBIT margin
 const generateIpiniumMonthly = (): MonthlyData[] => {
-  const targetRevenue = 28000000; // 28M SEK (growth driven by Tina products)
-  const avgMonthly = targetRevenue / 12;
-  
-  return months.map((month, index) => {
-    // Seasonal variation based on actual patterns (aug = 2.1M)
-    const seasonalFactor = 
-      index === 11 ? 1.50 : // December: strong end of year
-      index === 10 ? 1.30 : // November: strong
-      index === 9 ? 1.25 : // October: strong
-      index === 6 ? 0.60 : // July: weak summer (1.25M)
-      index === 5 ? 0.85 : // June: moderate
-      index === 7 ? 1.00 : // August: 2.1M actual
-      index === 2 ? 1.15 : // March peak
-      0.95;
-    
-    const revenue = avgMonthly * seasonalFactor;
-    const cogs = revenue * 0.54; // 54% COGS (46% gross margin, close to actual 48%)
+  const targetRevenue = 28000000; // 28M SEK
+
+  // Build seasonal factors array then normalize so annual sum equals targetRevenue
+  const factors = months.map((_, index) => (
+    index === 11 ? 1.50 : // December: strong end of year
+    index === 10 ? 1.30 : // November: strong
+    index === 9 ? 1.25 : // October: strong
+    index === 6 ? 0.60 : // July: weak summer
+    index === 5 ? 0.85 : // June: moderate
+    index === 7 ? 1.00 : // August: baseline
+    index === 2 ? 1.15 : // March peak
+    0.95
+  ));
+
+  const sumFactors = factors.reduce((a, b) => a + b, 0);
+  const base = targetRevenue / sumFactors;
+
+  const result: MonthlyData[] = months.map((month, index) => {
+    const seasonalFactor = factors[index];
+    const revenue = base * seasonalFactor;
+
+    const cogs = revenue * 0.54; // 54% COGS (46% gross margin)
     const grossProfit = revenue - cogs;
     const grossMargin = (grossProfit / revenue) * 100;
-    
+
     // Operating expenses based on actuals
     const personnel = revenue * 0.18; // 18% personnel
     const marketing = revenue * 0.04; // 4% marketing
     const office = revenue * 0.15; // 15% office & other costs
     const otherOpex = revenue * 0.02; // 2% other costs
     const totalOpex = personnel + marketing + office + otherOpex;
-    
+
     const depreciation = revenue * 0.008; // 0.8% depreciation
     const operatingResult = grossProfit - totalOpex;
     const ebit = operatingResult - depreciation;
     const ebitMargin = (ebit / revenue) * 100;
-    
+
     const financialCosts = revenue * -0.014; // -1.4% financial costs
     const resultAfterFinancial = ebit + financialCosts;
-    
+
     return {
       month,
       revenue: Math.round(revenue),
@@ -61,6 +66,53 @@ const generateIpiniumMonthly = (): MonthlyData[] => {
       resultAfterFinancial: Math.round(resultAfterFinancial),
     };
   });
+
+  // Adjust rounding drift on the last month to ensure annual revenue equals the target exactly
+  const roundedSum = result.reduce((s, m) => s + m.revenue, 0);
+  const delta = targetRevenue - roundedSum;
+  if (delta !== 0) {
+    const last = result[result.length - 1];
+    const adjustedRevenue = last.revenue + delta;
+
+    // Recompute dependent metrics for last month using the same percentages
+    const revenue = adjustedRevenue;
+    const cogs = Math.round(revenue * 0.54);
+    const grossProfit = revenue - cogs;
+    const grossMargin = Math.round(((grossProfit / revenue) * 100) * 10) / 10;
+
+    const personnel = Math.round(revenue * 0.18);
+    const marketing = Math.round(revenue * 0.04);
+    const office = Math.round(revenue * 0.15);
+    const otherOpex = Math.round(revenue * 0.02);
+    const totalOpex = personnel + marketing + office + otherOpex;
+
+    const depreciation = Math.round(revenue * 0.008);
+    const ebit = (grossProfit - totalOpex - depreciation);
+    const ebitMargin = Math.round(((ebit / revenue) * 100) * 10) / 10;
+
+    const financialCosts = Math.round(revenue * -0.014);
+    const resultAfterFinancial = ebit + financialCosts;
+
+    result[result.length - 1] = {
+      ...last,
+      revenue,
+      cogs,
+      grossProfit,
+      grossMargin,
+      personnel,
+      marketing,
+      office,
+      otherOpex,
+      totalOpex,
+      depreciation,
+      ebit,
+      ebitMargin,
+      financialCosts,
+      resultAfterFinancial,
+    } as MonthlyData;
+  }
+
+  return result;
 };
 
 // OnePan Budget - Based on actuals aug 2025: 1.66M ytd (target revised to 7M)
@@ -192,22 +244,25 @@ const generateIpiniumBusinessAreas = (): BusinessArea[] => {
   ];
 
   const targetRevenue = 28000000;
-  const avgMonthly = targetRevenue / 12;
+
+  // Use the same seasonal factors and normalization as the main Ipinium monthly generation
+  const factors = months.map((_, index) => (
+    index === 11 ? 1.50 :
+    index === 10 ? 1.30 :
+    index === 9 ? 1.25 :
+    index === 6 ? 0.60 :
+    index === 5 ? 0.85 :
+    index === 7 ? 1.00 :
+    index === 2 ? 1.15 :
+    0.95
+  ));
+  const sumFactors = factors.reduce((a, b) => a + b, 0);
+  const base = targetRevenue / sumFactors;
 
   return businessAreas.map(area => {
     const monthlyData: BusinessAreaMonthly[] = months.map((month, index) => {
-      // Same seasonal pattern as total revenue
-      const seasonalFactor = 
-        index === 11 ? 1.50 : // December: strong
-        index === 10 ? 1.30 : // November
-        index === 9 ? 1.25 : // October
-        index === 6 ? 0.60 : // July: weak
-        index === 5 ? 0.85 : // June
-        index === 7 ? 1.00 : // August: actual baseline
-        index === 2 ? 1.15 : // March peak
-        0.95;
-      
-      const revenue = avgMonthly * seasonalFactor * area.share;
+      const seasonalFactor = factors[index];
+      const revenue = base * seasonalFactor * area.share;
       const grossProfit = revenue * (area.margin / 100);
       
       return {
@@ -282,12 +337,13 @@ const generateIpiniumCostCategories = (): CostCategory[] => {
   ];
 };
 
+const ipiniumMonthly = generateIpiniumMonthly();
 export const ipiniumBudget: BudgetData = {
   company: "Ipinium AB",
-  totalRevenue: generateIpiniumMonthly().reduce((s, m) => s + m.revenue, 0),
+  totalRevenue: ipiniumMonthly.reduce((s, m) => s + m.revenue, 0),
   targetRevenue: 28000000,
   growthRate: "+36%",
-  monthlyData: generateIpiniumMonthly(),
+  monthlyData: ipiniumMonthly,
   businessAreas: generateIpiniumBusinessAreas(),
   costCategories: generateIpiniumCostCategories(),
 };
@@ -338,12 +394,13 @@ const generateOnePanMarketingCategories = (): CostCategory[] => {
   ];
 };
 
+const onepanMonthly = generateOnepanMonthly();
 export const onepanBudget: BudgetData = {
   company: "OnePan",
-  totalRevenue: generateOnepanMonthly().reduce((s, m) => s + m.revenue, 0),
+  totalRevenue: onepanMonthly.reduce((s, m) => s + m.revenue, 0),
   targetRevenue: 7000000,
   growthRate: "+180%",
-  monthlyData: generateOnepanMonthly(),
+  monthlyData: onepanMonthly,
   costCategories: generateOnePanMarketingCategories(),
 };
 
