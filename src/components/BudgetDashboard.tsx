@@ -129,23 +129,21 @@ export const BudgetDashboard = () => {
             loaded[row.company.toLowerCase()] = row.data as unknown as BudgetData;
           });
 
-          // Always use the document (local) monthlyData as source of truth to avoid overwriting totals
+          // Use saved backend data when available, local data as fallback
           const ip = loaded['ipinium ab']
             ? {
+                ...ipiniumBudget,
                 ...loaded['ipinium ab'],
-                // keep latest structure from the document
-                monthlyData: ipiniumBudget.monthlyData,
+                // Always keep the latest structure for businessAreas from the document
                 businessAreas: ipiniumBudget.businessAreas,
-                costCategories: loaded['ipinium ab'].costCategories || ipiniumBudget.costCategories,
                 company: 'Ipinium AB',
               }
             : ipiniumBudget;
 
           const op = loaded['onepan']
             ? {
+                ...onepanBudget,
                 ...loaded['onepan'],
-                monthlyData: onepanBudget.monthlyData,
-                costCategories: loaded['onepan'].costCategories || onepanBudget.costCategories,
                 company: 'OnePan',
               }
             : onepanBudget;
