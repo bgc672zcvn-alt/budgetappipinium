@@ -157,8 +157,22 @@ Deno.serve(async (req) => {
     const currentYear = new Date().getFullYear();
     const targetYear = requestedYear || currentYear - 1; // default till föregående år
 
+    // Hämta redan synkade månader för att undvika onödiga API-anrop
+    const { data: existingRows } = await supabaseAdmin
+      .from('fortnox_historical_data')
+      .select('month,revenue')
+      .eq('company', tokenData.company)
+      .eq('year', targetYear);
+    const alreadySynced = new Set<number>((existingRows || [])
+      .filter((r: any) => Number(r.revenue) > 0)
+      .map((r: any) => Number(r.month)));
+
     const monthlyData = [];
     for (let month = 1; month <= 12; month++) {
+      if (alreadySynced.has(month)) {
+        console.log(`Month ${targetYear}-${month} already synced, skipping.`);
+        continue;
+      }
       // Fetch financial data for each month using Fortnox API
       const fromDate = `${targetYear}-${String(month).padStart(2, '0')}-01`;
       const lastDay = new Date(targetYear, month, 0).getDate();
