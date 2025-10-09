@@ -136,9 +136,8 @@ export const BudgetDashboard = () => {
           const ip = loaded['ipinium ab']
             ? {
                 ...ipiniumBudget,
-                ...loaded['ipinium ab'],
-                // Always keep the latest structure for businessAreas from the document
-                businessAreas: ipiniumBudget.businessAreas,
+                // Only use the monthlyData from backend, keep everything else from local data
+                monthlyData: (loaded['ipinium ab'] as BudgetData).monthlyData || ipiniumBudget.monthlyData,
                 company: 'Ipinium AB',
               }
             : ipiniumBudget;
@@ -146,7 +145,8 @@ export const BudgetDashboard = () => {
           const op = loaded['onepan']
             ? {
                 ...onepanBudget,
-                ...loaded['onepan'],
+                // Only use the monthlyData from backend, keep everything else from local data
+                monthlyData: (loaded['onepan'] as BudgetData).monthlyData || onepanBudget.monthlyData,
                 company: 'OnePan',
               }
             : onepanBudget;
