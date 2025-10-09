@@ -170,7 +170,7 @@ export const BudgetDashboard = () => {
     loadBudgets();
   }, []);
 
-  // Spara ändringar till backend
+  // Spara ändringar till backend - endast månadsdata, aldrig totalRevenue
   useEffect(() => {
     if (isLoading) return;
 
@@ -179,8 +179,24 @@ export const BudgetDashboard = () => {
         await supabase
           .from('budget_data')
           .upsert([
-            { company: 'Ipinium AB', data: normalizeTotals(budgetData.ipinium) as any },
-            { company: 'OnePan', data: normalizeTotals(budgetData.onepan) as any },
+            { 
+              company: 'Ipinium AB', 
+              data: {
+                ...budgetData.ipinium,
+                totalRevenue: undefined, // Aldrig spara totalRevenue - det beräknas alltid
+                businessAreas: undefined, // Aldrig spara businessAreas - det beräknas alltid
+                costCategories: undefined, // Aldrig spara costCategories - det beräknas alltid
+              } as any 
+            },
+            { 
+              company: 'OnePan', 
+              data: {
+                ...budgetData.onepan,
+                totalRevenue: undefined, // Aldrig spara totalRevenue - det beräknas alltid
+                businessAreas: undefined, 
+                costCategories: undefined,
+              } as any 
+            },
           ], { onConflict: 'company' });
       } catch (error) {
         console.error('Fel vid sparande:', error);

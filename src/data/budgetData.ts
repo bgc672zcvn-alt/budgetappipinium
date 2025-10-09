@@ -226,7 +226,7 @@ const generateOnepanMonthly = (): MonthlyData[] => {
 };
 
 // Ipinium Business Areas - Growth focused on Tina products
-const generateIpiniumBusinessAreas = (): BusinessArea[] => {
+const generateIpiniumBusinessAreas = (monthlyData: MonthlyData[]): BusinessArea[] => {
   const businessAreas = [
     // Tina-produkter först
     { name: "Tina Land", share: 0.15, margin: 26.8 },
@@ -243,39 +243,23 @@ const generateIpiniumBusinessAreas = (): BusinessArea[] => {
     { name: "Ångstäd", share: 0.00, margin: 0 },
   ];
 
-  const targetRevenue = 28000000;
-
-  // Use the same seasonal factors and normalization as the main Ipinium monthly generation
-  const factors = months.map((_, index) => (
-    index === 11 ? 1.50 :
-    index === 10 ? 1.30 :
-    index === 9 ? 1.25 :
-    index === 6 ? 0.60 :
-    index === 5 ? 0.85 :
-    index === 7 ? 1.00 :
-    index === 2 ? 1.15 :
-    0.95
-  ));
-  const sumFactors = factors.reduce((a, b) => a + b, 0);
-  const base = targetRevenue / sumFactors;
-
   return businessAreas.map(area => {
-    const monthlyData: BusinessAreaMonthly[] = months.map((month, index) => {
-      const seasonalFactor = factors[index];
-      const revenue = base * seasonalFactor * area.share;
-      const grossProfit = revenue * (area.margin / 100);
+    const monthlyAreaData: BusinessAreaMonthly[] = monthlyData.map((monthData) => {
+      // Use the actual monthly revenue and apply the area's share
+      const revenue = Math.round(monthData.revenue * area.share);
+      const grossProfit = Math.round(revenue * (area.margin / 100));
       
       return {
-        month,
-        revenue: Math.round(revenue),
+        month: monthData.month,
+        revenue,
         contributionMargin: area.margin,
-        grossProfit: Math.round(grossProfit),
+        grossProfit,
       };
     });
 
     return {
       name: area.name,
-      monthlyData,
+      monthlyData: monthlyAreaData,
     };
   });
 };
@@ -344,7 +328,7 @@ export const ipiniumBudget: BudgetData = {
   targetRevenue: 28000000,
   growthRate: "+36%",
   monthlyData: ipiniumMonthly,
-  businessAreas: generateIpiniumBusinessAreas(),
+  businessAreas: generateIpiniumBusinessAreas(ipiniumMonthly),
   costCategories: generateIpiniumCostCategories(),
 };
 
