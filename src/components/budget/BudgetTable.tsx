@@ -9,12 +9,36 @@ import {
 } from "@/components/ui/table";
 import { BudgetData } from "@/types/budget";
 import { CommentButton } from "@/components/comments/CommentButton";
+import { ComparisonRow } from "./ComparisonRow";
+import { useFortnoxData } from "@/hooks/useFortnoxData";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import { useSyncFortnoxData } from "@/hooks/useFortnoxData";
+import { toast } from "sonner";
 
 interface BudgetTableProps {
   budget: BudgetData;
 }
 
 export const BudgetTable = ({ budget }: BudgetTableProps) => {
+  const currentYear = new Date().getFullYear();
+  const previousYear = currentYear - 1;
+  
+  const { data: historicalData, isLoading, refetch } = useFortnoxData(budget.company, previousYear);
+  const { syncData } = useSyncFortnoxData();
+  
+  const handleSync = async () => {
+    try {
+      toast.loading("Synkar data från Fortnox...");
+      await syncData();
+      await refetch();
+      toast.success("Data synkad från Fortnox!");
+    } catch (error) {
+      console.error("Error syncing:", error);
+      toast.error("Kunde inte synka data från Fortnox");
+    }
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("sv-SE", {
       style: "currency",
@@ -23,12 +47,33 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
     }).format(value);
   };
 
+  // Map historical data to monthly arrays
+  const getPreviousYearData = (field: keyof typeof historicalData[0]) => {
+    if (!historicalData || historicalData.length === 0) {
+      return budget.monthlyData.map(() => 0);
+    }
+    
+    return budget.monthlyData.map((_, index) => {
+      const monthData = historicalData.find(d => d.month === index + 1);
+      return monthData ? Number(monthData[field]) : 0;
+    });
+  };
+
   return (
     <Card>
-      <div className="p-6">
-        <h2 className="text-xl font-semibold mb-4 text-foreground">
+      <div className="p-6 flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-foreground">
           Monthly Breakdown
         </h2>
+        <Button
+          onClick={handleSync}
+          variant="outline"
+          size="sm"
+          disabled={isLoading}
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Synka Fortnox
+        </Button>
       </div>
       <div className="relative">
         <Table>
@@ -52,9 +97,10 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {budget.monthlyData.map((month) => (
-              <TableRow key={month.month} className="hover:bg-muted/30">
-                <TableCell className="font-medium sticky left-0 bg-background z-30">{month.month}</TableCell>
+            {budget.monthlyData.map((month, index) => (
+              <>
+                <TableRow key={month.month} className="hover:bg-muted/30">
+                  <TableCell className="font-medium sticky left-0 bg-background z-30">{month.month}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <span className="font-semibold">{formatCurrency(month.revenue)}</span>
@@ -196,6 +242,15 @@ export const BudgetTable = ({ budget }: BudgetTableProps) => {
                   </div>
                 </TableCell>
               </TableRow>
+              {historicalData && historicalData.length > 0 && (
+                <ComparisonRow
+                  label={`${month.month} ${previousYear}`}
+                  currentYearData={[budget.monthlyData[index].revenue]}
+                  previousYearData={[getPreviousYearData('revenue')[index]]}
+                  formatValue={formatCurrency}
+                />
+              )}
+              </>
             ))}
             <TableRow className="bg-muted/50 font-bold border-t-2">
               <TableCell className="sticky left-0 bg-muted z-20">Total</TableCell>
