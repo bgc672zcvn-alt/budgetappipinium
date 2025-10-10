@@ -16,6 +16,8 @@ export interface ImportJob {
     totalVouchers?: number;
     totalMonthsImported?: number;
     yearStats?: Record<number, { months: number; vouchers: number }>;
+    currentMonth?: string;
+    processedMonths?: string[];
   };
   last_error?: string;
   created_at: string;

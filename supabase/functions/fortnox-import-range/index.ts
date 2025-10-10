@@ -143,8 +143,16 @@ async function fetchWithRetry<T>(
   diagnostics.totalApiCalls++;
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+    
     try {
-      const response = await fetch(url, { headers });
+      const response = await fetch(url, { 
+        headers,
+        signal: controller.signal 
+      });
+      
+      clearTimeout(timeoutId);
       
       // Handle 401 - try token refresh once
       if (response.status === 401 && on401Refresh && attempt === 0) {
@@ -179,7 +187,21 @@ async function fetchWithRetry<T>(
       
       return await response.json();
     } catch (err) {
+      clearTimeout(timeoutId);
       const error = err as Error;
+      
+      // Handle timeout
+      if (error.name === 'AbortError') {
+        if (attempt < maxRetries) {
+          const backoffMs = jitter(Math.pow(2, attempt) * 1000);
+          console.warn(`Request timeout, retrying after ${backoffMs}ms`);
+          diagnostics.totalRetries++;
+          await sleep(backoffMs);
+          continue;
+        }
+        throw new Error('Request timeout after retries');
+      }
+      
       if (attempt < maxRetries && (error instanceof TypeError || error.message.includes('fetch'))) {
         const backoffMs = jitter(Math.pow(2, attempt) * 1000);
         console.warn(`Network error, retrying after ${backoffMs}ms: ${error.message}`);
@@ -255,7 +277,11 @@ Deno.serve(async (req) => {
         totalVouchers: 0,
         totalMonthsImported: 0,
         yearStats: {} as Record<number, { months: number; vouchers: number }>,
+        currentMonth: '',
+        processedMonths: [] as string[],
       };
+      
+      let lastHeartbeat = Date.now();
 
       try {
         console.log(`[fortnox-import] Starting import for ${targetCompany}, years ${start}-${end}`);
@@ -305,6 +331,10 @@ Deno.serve(async (req) => {
 
           // Process each month
           for (let month = 1; month <= 12; month++) {
+            const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+            diagnostics.currentMonth = monthKey;
+            console.log(`[fortnox-import] Processing ${monthKey}`);
+            
             const monthDate = new Date(year, month - 1, 15);
             const monthDateStr = monthDate.toISOString().split('T')[0];
             
@@ -313,8 +343,9 @@ Deno.serve(async (req) => {
             });
 
             if (!matchingFy) {
-              console.warn(`No financial year for ${year}-${String(month).padStart(2, '0')}`);
+              console.warn(`No financial year for ${monthKey}`);
               processedMonths++;
+              diagnostics.processedMonths.push(monthKey);
               continue;
             }
 
@@ -324,22 +355,42 @@ Deno.serve(async (req) => {
 
             await sleep(800); // Conservative throttling
 
-            const vouchersUrl = `https://api.fortnox.se/3/vouchers?financialyear=${matchingFy.Id}&fromdate=${fromDate}&todate=${toDate}`;
-            const vouchersData = await fetchWithRetry<{ Vouchers: FortnoxVoucher[] }>(
-              vouchersUrl,
-              headers,
-              6,
-              diagnostics,
-              refreshTokenOnDemand
-            );
+            // Fetch vouchers with pagination
+            let allVouchers: FortnoxVoucher[] = [];
+            let currentPage = 1;
+            let hasMorePages = true;
 
-            const vouchers = vouchersData.Vouchers || [];
-            diagnostics.totalVouchers += vouchers.length;
-            diagnostics.yearStats[year].vouchers += vouchers.length;
+            while (hasMorePages) {
+              const vouchersUrl = `https://api.fortnox.se/3/vouchers?financialyear=${matchingFy.Id}&fromdate=${fromDate}&todate=${toDate}&page=${currentPage}`;
+              const vouchersData = await fetchWithRetry<{ 
+                Vouchers: FortnoxVoucher[];
+                MetaInformation?: { '@TotalPages'?: number; '@CurrentPage'?: number };
+              }>(
+                vouchersUrl,
+                headers,
+                6,
+                diagnostics,
+                refreshTokenOnDemand
+              );
+
+              const vouchers = vouchersData.Vouchers || [];
+              allVouchers = allVouchers.concat(vouchers);
+              
+              const totalPages = vouchersData.MetaInformation?.['@TotalPages'] || 1;
+              hasMorePages = currentPage < totalPages;
+              
+              if (hasMorePages) {
+                currentPage++;
+                await sleep(800); // Throttle between pages
+              }
+            }
+
+            diagnostics.totalVouchers += allVouchers.length;
+            diagnostics.yearStats[year].vouchers += allVouchers.length;
 
             const monthStats = { revenue: 0, cogs: 0, personnel: 0, marketing: 0, office: 0, other_opex: 0 };
 
-            for (const voucher of vouchers) {
+            for (const voucher of allVouchers) {
               let rows: FortnoxAccount[] = [];
 
               if (voucher.VoucherRows && voucher.VoucherRows.length > 0) {
@@ -418,9 +469,11 @@ Deno.serve(async (req) => {
             }
 
             processedMonths++;
+            diagnostics.processedMonths.push(monthKey);
             const progress = Math.round((processedMonths / totalMonths) * 100);
 
-            // Update job progress
+            // Heartbeat: Update job progress after each month
+            const now = Date.now();
             await supabaseClient
               .from('fortnox_import_jobs')
               .update({
@@ -429,6 +482,9 @@ Deno.serve(async (req) => {
                 updated_at: new Date().toISOString(),
               })
               .eq('id', job.id);
+            
+            lastHeartbeat = now;
+            console.log(`[fortnox-import] ${monthKey} completed - Progress: ${progress}%`);
           }
         }
 
