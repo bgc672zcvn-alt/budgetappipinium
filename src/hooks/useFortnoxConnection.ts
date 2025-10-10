@@ -46,30 +46,20 @@ export const useFortnoxConnection = () => {
         return { isConnected: false };
       }
 
-      const { data, error } = await supabase
-        .from('fortnox_tokens')
-        .select('company, updated_at, expires_at')
-        .eq('company', company)
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // Use the new fortnox-status endpoint which handles token refresh
+      const { data, error } = await supabase.functions.invoke('fortnox-status', {
+        body: { company }
+      });
 
       if (error) {
         console.error('Error checking connection:', error);
         return { isConnected: false };
       }
 
-      if (!data) {
-        return { isConnected: false };
-      }
-
-      // Check if token is expired
-      const expiresAt = new Date(data.expires_at);
-      const isExpired = expiresAt < new Date();
-
       return {
-        isConnected: !isExpired,
-        lastSync: data.updated_at,
-        company: data.company,
+        isConnected: data.connected || false,
+        lastSync: data.lastSync,
+        company: company,
       };
     } catch (error) {
       console.error('Error in checkConnection:', error);

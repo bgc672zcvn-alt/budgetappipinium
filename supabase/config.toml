@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.fortnox-import-range]
 verify_jwt = false
+
+[functions.fortnox-status]
+verify_jwt = true

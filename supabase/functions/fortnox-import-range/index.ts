@@ -18,6 +18,103 @@ interface FortnoxVoucher {
   VoucherRows?: Array<{ Account: number; Debit?: number; Credit?: number }>;
 }
 
+interface FortnoxTokenRefreshResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+}
+
+async function ensureAccessToken(
+  supabase: any,
+  userId: string,
+  company: string
+): Promise<{ accessToken: string; headers: Record<string, string> }> {
+  const { data: tokenData, error: tokenError } = await supabase
+    .from('fortnox_tokens')
+    .select('access_token, refresh_token, expires_at')
+    .eq('company', company)
+    .eq('user_id', userId)
+    .single();
+
+  if (tokenError || !tokenData) {
+    throw new Error('No valid Fortnox token found');
+  }
+
+  const expiresAt = new Date(tokenData.expires_at);
+  const now = new Date();
+  const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
+
+  // If token is fresh, return it
+  if (expiresAt > fiveMinutesFromNow) {
+    return {
+      accessToken: tokenData.access_token,
+      headers: {
+        'Authorization': `Bearer ${tokenData.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    };
+  }
+
+  // Token expiring soon or expired - refresh it
+  console.log('[ensureAccessToken] Token expiring soon, refreshing...');
+  
+  const clientId = Deno.env.get('FORTNOX_CLIENT_ID');
+  const clientSecret = Deno.env.get('FORTNOX_CLIENT_SECRET');
+  
+  if (!clientId || !clientSecret) {
+    throw new Error('Fortnox credentials not configured');
+  }
+
+  const refreshResponse = await fetch('https://apps.fortnox.se/oauth-v1/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: tokenData.refresh_token,
+      client_id: clientId,
+      client_secret: clientSecret,
+    }),
+  });
+
+  if (!refreshResponse.ok) {
+    const errorText = await refreshResponse.text();
+    console.error('[ensureAccessToken] Token refresh failed:', refreshResponse.status, errorText);
+    throw new Error(`Token refresh failed: ${refreshResponse.status}`);
+  }
+
+  const refreshData: FortnoxTokenRefreshResponse = await refreshResponse.json();
+  const newExpiresAt = new Date(now.getTime() + refreshData.expires_in * 1000);
+
+  // Update tokens in database
+  const { error: updateError } = await supabase
+    .from('fortnox_tokens')
+    .update({
+      access_token: refreshData.access_token,
+      refresh_token: refreshData.refresh_token,
+      expires_at: newExpiresAt.toISOString(),
+      updated_at: now.toISOString(),
+    })
+    .eq('company', company)
+    .eq('user_id', userId);
+
+  if (updateError) {
+    console.error('[ensureAccessToken] Failed to update tokens:', updateError);
+    throw updateError;
+  }
+
+  console.log('[ensureAccessToken] Token refreshed successfully');
+
+  return {
+    accessToken: refreshData.access_token,
+    headers: {
+      'Authorization': `Bearer ${refreshData.access_token}`,
+      'Content-Type': 'application/json',
+    },
+  };
+}
+
 function toNumber(val: unknown): number {
   if (typeof val === 'number') return val;
   if (typeof val === 'string') {
@@ -40,13 +137,29 @@ async function fetchWithRetry<T>(
   url: string,
   headers: Record<string, string>,
   maxRetries: number = 6,
-  diagnostics: { rateLimitHits: number; totalRetries: number; totalApiCalls: number }
+  diagnostics: { rateLimitHits: number; totalRetries: number; totalApiCalls: number },
+  on401Refresh?: () => Promise<Record<string, string>>
 ): Promise<T> {
   diagnostics.totalApiCalls++;
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const response = await fetch(url, { headers });
+      
+      // Handle 401 - try token refresh once
+      if (response.status === 401 && on401Refresh && attempt === 0) {
+        console.log('[fetchWithRetry] Got 401, attempting token refresh');
+        try {
+          const newHeaders = await on401Refresh();
+          headers = newHeaders;
+          diagnostics.totalRetries++;
+          await sleep(1000);
+          continue;
+        } catch (refreshError) {
+          console.error('[fetchWithRetry] Token refresh failed:', refreshError);
+          throw new Error('Session expired - reconnection required');
+        }
+      }
       
       if (response.status === 429) {
         diagnostics.rateLimitHits++;
@@ -145,44 +258,18 @@ Deno.serve(async (req) => {
       };
 
       try {
-        // Get Fortnox tokens
-        const { data: tokenData } = await supabaseClient
-          .from('fortnox_tokens')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('company', targetCompany)
-          .maybeSingle();
+        console.log(`[fortnox-import] Starting import for ${targetCompany}, years ${start}-${end}`);
+        
+        // Get initial access token
+        const tokenResult = await ensureAccessToken(supabaseClient, user.id, targetCompany);
+        let headers = tokenResult.headers;
 
-        if (!tokenData) {
-          throw new Error('No Fortnox connection found');
-        }
-
-        let accessToken = tokenData.access_token;
-        const expiresAt = new Date(tokenData.expires_at);
-
-        if (expiresAt <= new Date()) {
-          const refreshResponse = await fetch('https://apps.fortnox.se/oauth-v1/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-              grant_type: 'refresh_token',
-              refresh_token: tokenData.refresh_token,
-              client_id: Deno.env.get('FORTNOX_CLIENT_ID') || '',
-              client_secret: Deno.env.get('FORTNOX_CLIENT_SECRET') || '',
-            }),
-          });
-
-          if (!refreshResponse.ok) {
-            throw new Error('Failed to refresh token');
-          }
-
-          const refreshData = await refreshResponse.json();
-          accessToken = refreshData.access_token;
-        }
-
-        const headers = {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+        // Helper to refresh token on 401
+        const refreshTokenOnDemand = async () => {
+          console.log('[fortnox-import] Refreshing token on 401');
+          const newTokenResult = await ensureAccessToken(supabaseClient, user.id, targetCompany);
+          headers = newTokenResult.headers;
+          return newTokenResult.headers;
         };
 
         // Fetch financial years
@@ -190,7 +277,8 @@ Deno.serve(async (req) => {
           'https://api.fortnox.se/3/financialyears',
           headers,
           6,
-          diagnostics
+          diagnostics,
+          refreshTokenOnDemand
         );
 
         const financialYears = fyResponse.FinancialYears || [];
@@ -241,7 +329,8 @@ Deno.serve(async (req) => {
               vouchersUrl,
               headers,
               6,
-              diagnostics
+              diagnostics,
+              refreshTokenOnDemand
             );
 
             const vouchers = vouchersData.Vouchers || [];
@@ -264,7 +353,8 @@ Deno.serve(async (req) => {
                     detailUrl,
                     headers,
                     6,
-                    diagnostics
+                    diagnostics,
+                    refreshTokenOnDemand
                   );
                   rows = detailData.Voucher?.VoucherRows || [];
                 } catch (err) {
