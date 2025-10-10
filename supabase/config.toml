@@ -8,3 +8,6 @@ verify_jwt = true
 
 [functions.fortnox-callback]
 verify_jwt = false
+
+[functions.fortnox-import-range]
+verify_jwt = false

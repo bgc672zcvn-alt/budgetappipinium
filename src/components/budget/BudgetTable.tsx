@@ -13,12 +13,18 @@ import { CommentButton } from "@/components/comments/CommentButton";
 import { ComparisonRow } from "./ComparisonRow";
 import { useFortnoxData } from "@/hooks/useFortnoxData";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Download } from "lucide-react";
 import { useSyncFortnoxData, useFortnoxAvailableYears } from "@/hooks/useFortnoxData";
 import { toast } from "sonner";
 import { getAnnualTotals } from "@/lib/budgetMath";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { useImportJob, useStartFullImport } from "@/hooks/useImportJobs";
+import { ImportStatusPanel } from "./ImportStatusPanel";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface BudgetTableProps {
   budget: BudgetData;
@@ -29,11 +35,20 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
   const totals = getAnnualTotals(budget);
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = React.useState<number>(currentYear);
+  const [isSyncing, setIsSyncing] = React.useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
+  const [importStartYear, setImportStartYear] = React.useState(currentYear - 1);
+  const [importEndYear, setImportEndYear] = React.useState(currentYear);
+  const [activeJobId, setActiveJobId] = React.useState<string | null>(null);
+  
   const targetYear = selectedYear;
+  const queryClient = useQueryClient();
   
   const { data: historicalData, isLoading, refetch } = useFortnoxData(budget.company, targetYear);
   const { syncData } = useSyncFortnoxData();
   const { data: availableYears } = useFortnoxAvailableYears(budget.company);
+  const { startImport } = useStartFullImport();
+  const { data: importJob } = useImportJob(activeJobId);
 
   React.useEffect(() => {
     if (availableYears?.length) {
@@ -43,25 +58,78 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
       }
     }
   }, [availableYears, targetYear]);
+
+  React.useEffect(() => {
+    if (importJob?.status === 'succeeded') {
+      toast.success(`Full import slutförd! ${importJob.stats.totalMonthsImported || 0} månader importerade.`);
+      queryClient.invalidateQueries({ queryKey: ['fortnox-historical'] });
+      queryClient.invalidateQueries({ queryKey: ['fortnox-years'] });
+      setActiveJobId(null);
+    } else if (importJob?.status === 'failed') {
+      toast.error(`Import misslyckades: ${importJob.last_error}`);
+      setActiveJobId(null);
+    }
+  }, [importJob, queryClient]);
   
   const handleSync = async () => {
+    setIsSyncing(true);
+    const loadingToastId = toast.loading("Synkar data från Fortnox...");
+    
     try {
-      toast.loading("Synkar data från Fortnox...");
       console.log(`Syncing for company: ${budget.company}, year: ${targetYear}`);
       const result = await syncData(budget.company, targetYear);
-      await refetch();
       
-      const meta = result?.meta;
-      const monthsImported = meta?.monthsImported || 0;
+      const vouchersScanned = result?.vouchersScanned || 0;
+      const monthsImported = result?.monthsImported || 0;
+      const rateLimitHits = result?.rateLimitHits || 0;
+      const totalRetries = result?.totalRetries || 0;
+      const durationMs = result?.durationMs || 0;
+      
+      toast.dismiss(loadingToastId);
+      
+      await refetch();
+      await queryClient.invalidateQueries({ queryKey: ['fortnox-years', budget.company] });
       
       if (monthsImported === 0) {
-        toast.warning(`Ingen data hittades för ${budget.company} (${targetYear}). Kontrollera att bokföringsåtkomst är aktiverad i Fortnox.`);
+        toast.warning(
+          `Ingen data hittades (${vouchersScanned} verifikat skannade). Kontrollera Fortnox-åtkomst: Bokföring/Verifikat – läs. Om ert räkenskapsår inte är kalenderår, kör en full import.`,
+          { duration: 8000 }
+        );
       } else {
-        toast.success(`Importerade ${monthsImported} månader för ${budget.company} (${targetYear}).`);
+        const statsText = [
+          `${monthsImported} månader`,
+          `${vouchersScanned} verifikat`,
+          rateLimitHits > 0 ? `${rateLimitHits} 429-fel` : null,
+          totalRetries > 0 ? `${totalRetries} försök` : null,
+          `${(durationMs / 1000).toFixed(1)}s`,
+        ].filter(Boolean).join(', ');
+        
+        toast.success(`Importerade: ${statsText}`);
       }
     } catch (error) {
       console.error("Error syncing:", error);
+      toast.dismiss(loadingToastId);
       toast.error("Kunde inte synka data från Fortnox");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleFullImport = async () => {
+    try {
+      const result = await startImport(budget.company, importStartYear, importEndYear);
+      const jobId = result?.jobId;
+      
+      if (jobId) {
+        setActiveJobId(jobId);
+        setIsImportDialogOpen(false);
+        toast.success(`Fullständig import startad (${importStartYear}–${importEndYear})`);
+      } else {
+        toast.error('Kunde inte starta import');
+      }
+    } catch (error) {
+      console.error('Error starting full import:', error);
+      toast.error('Kunde inte starta fullständig import');
     }
   };
 
@@ -87,6 +155,8 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
 
   return (
     <Card>
+      {importJob && <ImportStatusPanel job={importJob} />}
+      
       <div className="p-6 flex items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-foreground">
           Monthly Breakdown

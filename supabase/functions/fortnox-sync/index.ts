@@ -1,31 +1,89 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.74.0';
 
 interface FortnoxFinancialYear {
-  '@url': string;
   Id: number;
   FromDate: string;
   ToDate: string;
 }
 
 interface FortnoxAccount {
-  '@url': string;
-  Number: number;
-  Description: string;
-  Active: boolean;
-  Year: number;
+  Account: number;
+  Debit?: number;
+  Credit?: number;
 }
 
-// Safe numeric parsing for Fortnox amounts (handles spaces and commas)
-const toNumber = (val: unknown): number => {
-  if (val === null || val === undefined) return 0;
-  const s = String(val).replace(/\s+/g, '').replace(',', '.');
-  const n = Number(s);
-  return Number.isFinite(n) ? n : 0;
+interface FortnoxVoucher {
+  VoucherSeries?: string;
+  VoucherNumber?: number;
+  VoucherRows?: Array<{ Account: number; Debit?: number; Credit?: number }>;
+}
+
+function toNumber(val: unknown): number {
+  if (typeof val === 'number') return val;
+  if (typeof val === 'string') {
+    const cleaned = val.replace(/\s/g, '').replace(',', '.');
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+}
+
+async function sleep(ms: number) {
+  await new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function jitter(base: number): number {
+  return base + Math.random() * 500;
+}
+
+async function fetchWithRetry<T>(
+  url: string,
+  headers: Record<string, string>,
+  maxRetries: number = 6,
+  diagnostics: { rateLimitHits: number; totalRetries: number; totalApiCalls: number }
+): Promise<T> {
+  diagnostics.totalApiCalls++;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, { headers });
+      
+      if (response.status === 429) {
+        diagnostics.rateLimitHits++;
+        if (attempt < maxRetries) {
+          const backoffMs = jitter(Math.pow(2, attempt) * 500);
+          console.warn(`Rate limit hit for ${url}, retrying after ${backoffMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+          diagnostics.totalRetries++;
+          await sleep(backoffMs);
+          continue;
+        }
+        throw new Error(`Rate limit exceeded after ${maxRetries} retries`);
+      }
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (err) {
+      const error = err as Error;
+      if (attempt < maxRetries && (error instanceof TypeError || error.message.includes('fetch'))) {
+        const backoffMs = jitter(Math.pow(2, attempt) * 500);
+        console.warn(`Network error for ${url}, retrying after ${backoffMs}ms: ${error.message}`);
+        diagnostics.totalRetries++;
+        await sleep(backoffMs);
+        continue;
+      }
+      throw error;
+    }
+  }
+  
+  throw new Error('Max retries exceeded');
+}
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 Deno.serve(async (req) => {
@@ -33,92 +91,71 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+  const diagnostics = {
+    rateLimitHits: 0,
+    totalRetries: 0,
+    totalApiCalls: 0,
+    vouchersScanned: 0,
+    monthsScanned: 0,
+    monthsImported: 0,
+    monthsWithoutFyMatch: 0,
+    usedDetailFetch: false,
+    firstMonthWithData: null as string | null,
+    perMonth: [] as Array<{ month: number; vouchers: number; revenue: number; cogs: number; personnel: number; marketing: number; office: number; other_opex: number }>,
+  };
+
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    console.info('Starting Fortnox data sync...');
 
-    if (!supabaseUrl || !supabaseServiceRoleKey) {
-      throw new Error('Supabase environment variables are not configured');
-    }
-
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
-
-    // Optional body params
-    let requestedCompany: string | undefined;
-    let requestedYear: number | undefined;
-    try {
-      const body = await req.json();
-      requestedCompany = body?.company;
-      requestedYear = body?.year;
-    } catch (_) {
-      // no body provided
-    }
-
-    // Get user from authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('No authorization header');
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-    
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) {
       throw new Error('Unauthorized');
     }
 
-    const companyToSync = requestedCompany || 'Ipinium AB';
+    const { company, year } = await req.json();
+    const targetYear = year || new Date().getFullYear();
+    const targetCompany = company || 'Ipinium';
 
-    // Try to load tokens for requested company first; fall back to exact match in DB if needed
-    let { data: tokenData, error: tokenError } = await supabaseAdmin
+    console.info(`Syncing data for company: ${targetCompany}, year: ${targetYear}`);
+
+    // Get Fortnox tokens
+    const { data: tokenData, error: tokenError } = await supabaseClient
       .from('fortnox_tokens')
       .select('*')
       .eq('user_id', user.id)
-      .eq('company', companyToSync)
+      .eq('company', targetCompany)
       .maybeSingle();
 
-    if ((tokenError || !tokenData) && requestedCompany) {
-      // Try a case-insensitive match as a fallback (handles e.g. 'Ipinium' vs 'Ipinium AB')
-      const { data: tokensList } = await supabaseAdmin
-        .from('fortnox_tokens')
-        .select('*')
-        .eq('user_id', user.id);
-      tokenData = (tokensList || []).find((t: any) =>
-        t.company?.toLowerCase().includes(requestedCompany!.toLowerCase())
-      );
+    if (tokenError || !tokenData) {
+      throw new Error('No Fortnox connection found');
     }
 
-    if (!tokenData) {
-      throw new Error('No Fortnox connection found for the selected company. Please connect Fortnox first.');
-    }
-
-    const companyForData = requestedCompany || tokenData.company;
-
-    // Check if token is expired
-    const expiresAt = new Date(tokenData.expires_at);
     let accessToken = tokenData.access_token;
+    const expiresAt = new Date(tokenData.expires_at);
 
-    if (expiresAt < new Date()) {
-      // Token expired, refresh it
-      console.log('Token expired, refreshing...');
-      
-      const clientId = Deno.env.get('FORTNOX_CLIENT_ID');
-      const clientSecret = Deno.env.get('FORTNOX_CLIENT_SECRET');
-
-      if (!clientId || !clientSecret) {
-        throw new Error('Fortnox credentials not configured');
-      }
-
+    // Refresh token if expired
+    if (expiresAt <= new Date()) {
+      console.info('Access token expired, refreshing...');
       const refreshResponse = await fetch('https://apps.fortnox.se/oauth-v1/token', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
           grant_type: 'refresh_token',
           refresh_token: tokenData.refresh_token,
-          client_id: clientId,
-          client_secret: clientSecret,
+          client_id: Deno.env.get('FORTNOX_CLIENT_ID') || '',
+          client_secret: Deno.env.get('FORTNOX_CLIENT_SECRET') || '',
         }),
       });
 
@@ -128,309 +165,219 @@ Deno.serve(async (req) => {
 
       const refreshData = await refreshResponse.json();
       accessToken = refreshData.access_token;
+      const newExpiresAt = new Date(Date.now() + refreshData.expires_in * 1000);
 
-      // Update token in database
-      const newExpiresAt = new Date();
-      newExpiresAt.setSeconds(newExpiresAt.getSeconds() + refreshData.expires_in);
-
-      await supabaseAdmin
+      await supabaseClient
         .from('fortnox_tokens')
         .update({
-          access_token: accessToken,
+          access_token: refreshData.access_token,
+          refresh_token: refreshData.refresh_token,
           expires_at: newExpiresAt.toISOString(),
-          updated_at: new Date().toISOString(),
         })
         .eq('id', tokenData.id);
-
-      console.log('Token refreshed successfully');
     }
 
-    // Build Fortnox headers using OAuth access token
-    const fortnoxHeaders: Record<string, string> = {
+    console.info('Using OAuth access token for Fortnox API');
+
+    const headers = {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-    
-    console.log('Using OAuth access token for Fortnox API');
-
-    console.log('Starting Fortnox data sync...');
-
-    // Get financial years from Fortnox
-    const financialYearsResponse = await fetch('https://api.fortnox.se/3/financialyears', {
-      method: 'GET',
-      headers: fortnoxHeaders,
-    });
-
-    if (!financialYearsResponse.ok) {
-      const errorText = await financialYearsResponse.text();
-      console.error('Fortnox API error:', errorText);
-      throw new Error(`Fortnox API error: ${financialYearsResponse.status} - ${errorText}`);
-    }
-
-    const financialYearsData = await financialYearsResponse.json();
-    console.log('Financial years:', financialYearsData);
-
-    // Skip accounts call (not needed for aggregation, reduces rate-limit pressure)
-    // Previously: GET /accounts used only for logging
-
-    // Process each month of the requested year
-    const currentYear = new Date().getFullYear();
-    const targetYear = requestedYear || 2024; // default to 2024 instead of previous year
-
-    console.log(`Starting sync for company ${tokenData.company} for year ${targetYear}`);
-
-    // Hämta redan synkade månader för att undvika onödiga API-anrop
-    const { data: existingRows } = await supabaseAdmin
-      .from('fortnox_historical_data')
-      .select('month,revenue')
-      .eq('company', tokenData.company)
-      .eq('year', targetYear);
-    const alreadySynced = new Set<number>((existingRows || [])
-      .filter((r: any) => Number(r.revenue) > 0)
-      .map((r: any) => Number(r.month)));
-
-    // Helper to fetch voucher details with retry
-    const fetchVoucherDetails = async (series: string, voucherNumber: string, fyId: number, attempt = 0): Promise<any> => {
-      try {
-        const detailResp = await fetch(`https://api.fortnox.se/3/vouchers/${series}/${voucherNumber}?financialyear=${fyId}`, {
-          method: 'GET',
-          headers: fortnoxHeaders,
-        });
-        
-        if (detailResp.status === 429 && attempt < 2) {
-          await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-          return fetchVoucherDetails(series, voucherNumber, fyId, attempt + 1);
-        }
-        
-        if (!detailResp.ok) {
-          console.error(`Failed to fetch voucher ${series}/${voucherNumber}:`, detailResp.status);
-          return null;
-        }
-        
-        const detailData = await detailResp.json();
-        return detailData?.Voucher || detailData?.voucher || null;
-      } catch (err) {
-        console.error(`Error fetching voucher ${series}/${voucherNumber}:`, err);
-        return null;
-      }
     };
 
-    // Clear existing zero data before sync
-    const { data: existingData } = await supabaseAdmin
+    // Fetch all financial years once
+    const fyResponse = await fetchWithRetry<{ FinancialYears: FortnoxFinancialYear[] }>(
+      'https://api.fortnox.se/3/financialyears',
+      headers,
+      6,
+      diagnostics
+    );
+
+    const financialYears = fyResponse.FinancialYears || [];
+    console.info(`Fetched ${financialYears.length} financial years`);
+
+    // Clear existing zero-value data for this company and year
+    await supabaseClient
       .from('fortnox_historical_data')
-      .select('*')
-      .eq('company', companyForData)
-      .eq('year', targetYear);
-    
-    if (existingData && existingData.length === 12) {
-      const allZeros = existingData.every((row: any) => 
-        row.revenue === 0 && row.cogs === 0 && row.personnel === 0 && 
-        row.marketing === 0 && row.office === 0 && row.other_opex === 0
-      );
-      if (allZeros) {
-        console.log(`Clearing ${existingData.length} zero rows for ${companyForData} ${targetYear}`);
-        await supabaseAdmin
-          .from('fortnox_historical_data')
-          .delete()
-          .eq('company', companyForData)
-          .eq('year', targetYear);
-      }
-    }
+      .delete()
+      .eq('company', targetCompany)
+      .eq('year', targetYear)
+      .eq('revenue', 0)
+      .eq('cogs', 0)
+      .eq('personnel', 0)
+      .eq('marketing', 0)
+      .eq('office', 0)
+      .eq('other_opex', 0);
 
-    const monthlyData = [];
-    let totalVouchersScanned = 0;
-    let usedDetailFetch = false;
-
+    // Process each month
     for (let month = 1; month <= 12; month++) {
+      diagnostics.monthsScanned++;
+      
+      // Find the correct financial year for this month
+      const monthDate = new Date(targetYear, month - 1, 15);
+      const monthDateStr = monthDate.toISOString().split('T')[0];
+      
+      const matchingFy = financialYears.find(fy => {
+        return monthDateStr >= fy.FromDate && monthDateStr <= fy.ToDate;
+      });
+
+      if (!matchingFy) {
+        console.warn(`No financial year found for ${targetYear}-${String(month).padStart(2, '0')}`);
+        diagnostics.monthsWithoutFyMatch++;
+        continue;
+      }
+
       const fromDate = `${targetYear}-${String(month).padStart(2, '0')}-01`;
       const lastDay = new Date(targetYear, month, 0).getDate();
       const toDate = `${targetYear}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-      console.log(`Fetching data for ${fromDate} to ${toDate}`);
+      console.info(`Processing month ${month} with FY ${matchingFy.Id} (${matchingFy.FromDate} to ${matchingFy.ToDate})`);
 
-      const fy = (financialYearsData?.FinancialYears || []).find((y: any) => (new Date(y.FromDate)).getFullYear() === targetYear);
-      const fyId = fy?.Id;
+      const vouchersUrl = `https://api.fortnox.se/3/vouchers?financialyear=${matchingFy.Id}&fromdate=${fromDate}&todate=${toDate}`;
+      
+      await sleep(600); // Throttle to avoid rate limits
+      
+      const vouchersData = await fetchWithRetry<{ Vouchers: FortnoxVoucher[] }>(
+        vouchersUrl,
+        headers,
+        6,
+        diagnostics
+      );
 
-      let revenue = 0;
-      let cogs = 0;
-      let personnel = 0;
-      let marketing = 0;
-      let office = 0;
-      let other_opex = 0;
+      const vouchers = vouchersData.Vouchers || [];
+      diagnostics.vouchersScanned += vouchers.length;
 
-      if (fyId) {
-        let page = 1;
-        let totalPages = 1;
-        const allVouchersForMonth: any[] = [];
-        
-        // Fetch all voucher list pages
-        do {
-          let attempt = 0;
-          let vouchersResp: Response | null = null;
+      const monthStats = {
+        month,
+        vouchers: vouchers.length,
+        revenue: 0,
+        cogs: 0,
+        personnel: 0,
+        marketing: 0,
+        office: 0,
+        other_opex: 0,
+      };
+
+      // Aggregate data
+      for (const voucher of vouchers) {
+        let rows: FortnoxAccount[] = [];
+
+        if (voucher.VoucherRows && voucher.VoucherRows.length > 0) {
+          rows = voucher.VoucherRows;
+        } else if (voucher.VoucherSeries && voucher.VoucherNumber) {
+          // Fetch details
+          diagnostics.usedDetailFetch = true;
+          const detailUrl = `https://api.fortnox.se/3/vouchers/${voucher.VoucherSeries}/${voucher.VoucherNumber}`;
           
-          do {
-            vouchersResp = await fetch(`https://api.fortnox.se/3/vouchers?financialyear=${fyId}&fromdate=${fromDate}&todate=${toDate}&page=${page}`, {
-              method: 'GET',
-              headers: fortnoxHeaders,
-            });
-            if (vouchersResp.ok) break;
-            const status = vouchersResp.status;
-            if (status === 429 && attempt < 2) {
-              await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
-              attempt++;
-              continue;
-            }
-            vouchersResp = null;
-            break;
-          } while (attempt < 3);
-
-          if (!vouchersResp) break;
-
-          const vouchersData = await vouchersResp.json();
-          const meta = vouchersData?.MetaInformation || vouchersData?.meta || {};
-          totalPages = parseInt(meta['@TotalPages'] || meta.total_pages || '1') || 1;
-
-          const vouchers = vouchersData?.Vouchers || vouchersData?.vouchers || [];
-          allVouchersForMonth.push(...vouchers);
-
-          page += 1;
-          await new Promise(r => setTimeout(r, 200));
-        } while (page <= totalPages);
-
-        console.log(`Found ${allVouchersForMonth.length} vouchers for ${month}/${targetYear}`);
-        totalVouchersScanned += allVouchersForMonth.length;
-
-        // Check if first voucher has rows
-        const needsDetailFetch = allVouchersForMonth.length > 0 && 
-          !(allVouchersForMonth[0]?.VoucherRows || allVouchersForMonth[0]?.voucherRows || allVouchersForMonth[0]?.Rows);
-        
-        if (needsDetailFetch) {
-          console.log('VoucherRows not in list response, fetching details...');
-          usedDetailFetch = true;
+          await sleep(600); // Throttle
           
-          // Fetch details in batches of 4
-          const batchSize = 4;
-          for (let i = 0; i < allVouchersForMonth.length; i += batchSize) {
-            const batch = allVouchersForMonth.slice(i, i + batchSize);
-            const detailPromises = batch.map(v => {
-              const series = v?.VoucherSeries || v?.Series || '';
-              const num = v?.VoucherNumber || v?.Number || '';
-              return series && num ? fetchVoucherDetails(series, num, fyId) : Promise.resolve(null);
-            });
-            
-            const details = await Promise.all(detailPromises);
-            
-            for (const detail of details) {
-              if (!detail) continue;
-              const rows = detail?.VoucherRows || detail?.voucherRows || detail?.Rows || [];
-              
-              for (const row of rows) {
-                const accountVal = row.Account ?? row.account ?? row.AccountNumber ?? row.accountNumber ?? 0;
-                const accountNum = Number(String(accountVal).replace(/[^0-9]/g, '')) || 0;
-                const debit = toNumber(row.Debit ?? row.debit ?? row.AmountDebit ?? 0);
-                const credit = toNumber(row.Credit ?? row.credit ?? row.AmountCredit ?? 0);
-                const net = debit - credit;
-
-                if (accountNum >= 3000 && accountNum <= 3999) revenue += Math.abs(net);
-                else if (accountNum >= 4000 && accountNum <= 4999) cogs += Math.abs(net);
-                else if (accountNum >= 7000 && accountNum <= 7699) personnel += Math.abs(net);
-                else if (accountNum >= 6000 && accountNum <= 6099) marketing += Math.abs(net);
-                else if ((accountNum >= 5000 && accountNum <= 5999) || (accountNum >= 6100 && accountNum <= 6999)) office += Math.abs(net);
-                else if (accountNum >= 7700 && accountNum <= 7999) other_opex += Math.abs(net);
-              }
-            }
-            
-            await new Promise(r => setTimeout(r, 300));
+          try {
+            const detailData = await fetchWithRetry<{ Voucher: { VoucherRows?: FortnoxAccount[] } }>(
+              detailUrl,
+              headers,
+              6,
+              diagnostics
+            );
+            rows = detailData.Voucher?.VoucherRows || [];
+          } catch (err) {
+            const error = err as Error;
+            console.error(`Failed to fetch voucher ${voucher.VoucherSeries}/${voucher.VoucherNumber}:`, error.message);
+            continue;
           }
-        } else {
-          // Process rows directly from list
-          for (const v of allVouchersForMonth) {
-            const rows = v?.VoucherRows || v?.voucherRows || v?.Rows || [];
-            for (const row of rows) {
-              const accountVal = row.Account ?? row.account ?? row.AccountNumber ?? row.accountNumber ?? 0;
-              const accountNum = Number(String(accountVal).replace(/[^0-9]/g, '')) || 0;
-              const debit = toNumber(row.Debit ?? row.debit ?? row.AmountDebit ?? 0);
-              const credit = toNumber(row.Credit ?? row.credit ?? row.AmountCredit ?? 0);
-              const net = debit - credit;
+        }
 
-              if (accountNum >= 3000 && accountNum <= 3999) revenue += Math.abs(net);
-              else if (accountNum >= 4000 && accountNum <= 4999) cogs += Math.abs(net);
-              else if (accountNum >= 7000 && accountNum <= 7699) personnel += Math.abs(net);
-              else if (accountNum >= 6000 && accountNum <= 6099) marketing += Math.abs(net);
-              else if ((accountNum >= 5000 && accountNum <= 5999) || (accountNum >= 6100 && accountNum <= 6999)) office += Math.abs(net);
-              else if (accountNum >= 7700 && accountNum <= 7999) other_opex += Math.abs(net);
-            }
+        for (const row of rows) {
+          const account = row.Account;
+          const debit = toNumber(row.Debit);
+          const credit = toNumber(row.Credit);
+          const net = debit - credit;
+
+          if (account >= 3000 && account <= 3999) {
+            monthStats.revenue += net;
+          } else if (account >= 4000 && account <= 4999) {
+            monthStats.cogs += net;
+          } else if (account >= 7000 && account <= 7699) {
+            monthStats.personnel += net;
+          } else if (account >= 6000 && account <= 6099) {
+            monthStats.marketing += net;
+          } else if ((account >= 5000 && account <= 5999) || (account >= 6100 && account <= 6999)) {
+            monthStats.office += net;
+          } else if (account >= 7700 && account <= 7999) {
+            monthStats.other_opex += net;
           }
         }
       }
 
-      const gross_profit = revenue - cogs;
-      console.log(`Totals ${targetYear}-${String(month).padStart(2,'0')}:`, { revenue, cogs, personnel, marketing, office, other_opex });
+      diagnostics.perMonth.push(monthStats);
 
-      const data = {
-        company: companyForData,
-        year: targetYear,
-        month: month,
-        revenue: Math.round(revenue),
-        cogs: Math.round(cogs),
-        gross_profit: Math.round(gross_profit),
-        personnel: Math.round(personnel),
-        marketing: Math.round(marketing),
-        office: Math.round(office),
-        other_opex: Math.round(other_opex),
-      };
+      // Only upsert if there's non-zero data
+      const hasData = monthStats.revenue !== 0 || monthStats.cogs !== 0 || monthStats.personnel !== 0 ||
+                       monthStats.marketing !== 0 || monthStats.office !== 0 || monthStats.other_opex !== 0;
 
-      const hasAnyValue = (data.revenue + data.cogs + data.personnel + data.marketing + data.office + data.other_opex) > 0;
-      if (!hasAnyValue) {
-        console.log(`No data for ${targetYear}-${month}, skipping upsert.`);
-        continue;
-      }
+      if (hasData) {
+        const grossProfit = monthStats.revenue - monthStats.cogs;
 
-      const { error } = await supabaseAdmin
-        .from('fortnox_historical_data')
-        .upsert(data, { onConflict: 'company,year,month' });
+        await supabaseClient
+          .from('fortnox_historical_data')
+          .upsert({
+            company: targetCompany,
+            year: targetYear,
+            month,
+            revenue: monthStats.revenue,
+            cogs: monthStats.cogs,
+            gross_profit: grossProfit,
+            personnel: monthStats.personnel,
+            marketing: monthStats.marketing,
+            office: monthStats.office,
+            other_opex: monthStats.other_opex,
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'company,year,month',
+          });
 
-      if (error) {
-        console.error('Error inserting data for month', month, ':', error);
+        diagnostics.monthsImported++;
+        if (!diagnostics.firstMonthWithData) {
+          diagnostics.firstMonthWithData = `${targetYear}-${String(month).padStart(2, '0')}`;
+        }
+
+        console.info(`Month ${month}: Imported data (revenue: ${monthStats.revenue}, vouchers: ${monthStats.vouchers})`);
       } else {
-        console.log(`Synced data for ${targetYear}-${month}`, data);
-        monthlyData.push(data);
+        console.info(`Month ${month}: No data to import (${monthStats.vouchers} vouchers scanned)`);
       }
-
-      await new Promise(r => setTimeout(r, 200));
     }
 
-    console.log(`Sync complete: ${totalVouchersScanned} vouchers scanned, ${monthlyData.length} months imported, detail fetch: ${usedDetailFetch}`);
+    const durationMs = Date.now() - startTime;
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Fortnox data synced successfully',
-        data: monthlyData,
-        meta: {
-          vouchersScanned: totalVouchersScanned,
-          monthsImported: monthlyData.length,
-          usedDetailFetch,
-        },
+      JSON.stringify({
+        success: true,
+        company: targetCompany,
+        year: targetYear,
+        vouchersScanned: diagnostics.vouchersScanned,
+        monthsImported: diagnostics.monthsImported,
+        monthsScanned: diagnostics.monthsScanned,
+        monthsWithoutFyMatch: diagnostics.monthsWithoutFyMatch,
+        usedDetailFetch: diagnostics.usedDetailFetch,
+        rateLimitHits: diagnostics.rateLimitHits,
+        totalRetries: diagnostics.totalRetries,
+        totalApiCalls: diagnostics.totalApiCalls,
+        durationMs,
+        firstMonthWithData: diagnostics.firstMonthWithData,
+        perMonth: diagnostics.perMonth,
       }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-  } catch (error) {
+  } catch (err) {
+    const error = err as Error;
     console.error('Error in fortnox-sync function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const durationMs = Date.now() - startTime;
+    
     return new Response(
-      JSON.stringify({ 
-        error: errorMessage,
-        details: 'Check function logs for more information',
+      JSON.stringify({
+        error: error.message,
+        diagnostics,
+        durationMs,
       }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

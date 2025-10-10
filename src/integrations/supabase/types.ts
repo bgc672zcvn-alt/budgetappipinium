@@ -146,6 +146,48 @@ export type Database = {
         }
         Relationships: []
       }
+      fortnox_import_jobs: {
+        Row: {
+          company: string
+          created_at: string
+          end_year: number
+          id: string
+          last_error: string | null
+          progress: number
+          start_year: number
+          stats: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company: string
+          created_at?: string
+          end_year: number
+          id?: string
+          last_error?: string | null
+          progress?: number
+          start_year: number
+          stats?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company?: string
+          created_at?: string
+          end_year?: number
+          id?: string
+          last_error?: string | null
+          progress?: number
+          start_year?: number
+          stats?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       fortnox_tokens: {
         Row: {
           access_token: string
