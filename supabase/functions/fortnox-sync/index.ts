@@ -363,20 +363,26 @@ Deno.serve(async (req) => {
           const account = row.Account;
           const debit = toNumber(row.Debit);
           const credit = toNumber(row.Credit);
-          const net = debit - credit;
 
+          // Revenue accounts (3xxx) are credit-based in accounting
           if (account >= 3000 && account <= 3999) {
-            monthStats.revenue += net;
-          } else if (account >= 4000 && account <= 4999) {
-            monthStats.cogs += net;
-          } else if (account >= 7000 && account <= 7699) {
-            monthStats.personnel += net;
-          } else if (account >= 6000 && account <= 6099) {
-            monthStats.marketing += net;
-          } else if ((account >= 5000 && account <= 5999) || (account >= 6100 && account <= 6999)) {
-            monthStats.office += net;
-          } else if (account >= 7700 && account <= 7999) {
-            monthStats.other_opex += net;
+            monthStats.revenue += (credit - debit);
+          }
+          // Cost accounts are debit-based
+          else if (account >= 4000 && account <= 4999) {
+            monthStats.cogs += (debit - credit);
+          }
+          else if (account >= 7000 && account <= 7699) {
+            monthStats.personnel += (debit - credit);
+          }
+          else if (account >= 6000 && account <= 6099) {
+            monthStats.marketing += (debit - credit);
+          }
+          else if ((account >= 5000 && account <= 5999) || (account >= 6100 && account <= 6999)) {
+            monthStats.office += (debit - credit);
+          }
+          else if (account >= 7700 && account <= 7999) {
+            monthStats.other_opex += (debit - credit);
           }
         }
       }
