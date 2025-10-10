@@ -48,9 +48,17 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
     try {
       toast.loading("Synkar data från Fortnox...");
       console.log(`Syncing for company: ${budget.company}, year: ${targetYear}`);
-      await syncData(budget.company, targetYear);
+      const result = await syncData(budget.company, targetYear);
       await refetch();
-      toast.success(`Data synkad från Fortnox för ${budget.company} (${targetYear}).`);
+      
+      const meta = result?.meta;
+      const monthsImported = meta?.monthsImported || 0;
+      
+      if (monthsImported === 0) {
+        toast.warning(`Ingen data hittades för ${budget.company} (${targetYear}). Kontrollera att bokföringsåtkomst är aktiverad i Fortnox.`);
+      } else {
+        toast.success(`Importerade ${monthsImported} månader för ${budget.company} (${targetYear}).`);
+      }
     } catch (error) {
       console.error("Error syncing:", error);
       toast.error("Kunde inte synka data från Fortnox");

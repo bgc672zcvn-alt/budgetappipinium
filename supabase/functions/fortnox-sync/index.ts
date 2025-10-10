@@ -190,37 +190,85 @@ Deno.serve(async (req) => {
       .filter((r: any) => Number(r.revenue) > 0)
       .map((r: any) => Number(r.month)));
 
-    const monthlyData = [];
-    for (let month = 1; month <= 12; month++) {
-      if (alreadySynced.has(month)) {
-        console.log(`Month ${targetYear}-${month} already synced, skipping.`);
-        continue;
+    // Helper to fetch voucher details with retry
+    const fetchVoucherDetails = async (series: string, voucherNumber: string, fyId: number, attempt = 0): Promise<any> => {
+      try {
+        const detailResp = await fetch(`https://api.fortnox.se/3/vouchers/${series}/${voucherNumber}?financialyear=${fyId}`, {
+          method: 'GET',
+          headers: fortnoxHeaders,
+        });
+        
+        if (detailResp.status === 429 && attempt < 2) {
+          await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+          return fetchVoucherDetails(series, voucherNumber, fyId, attempt + 1);
+        }
+        
+        if (!detailResp.ok) {
+          console.error(`Failed to fetch voucher ${series}/${voucherNumber}:`, detailResp.status);
+          return null;
+        }
+        
+        const detailData = await detailResp.json();
+        return detailData?.Voucher || detailData?.voucher || null;
+      } catch (err) {
+        console.error(`Error fetching voucher ${series}/${voucherNumber}:`, err);
+        return null;
       }
-      // Fetch financial data for each month using Fortnox API
+    };
+
+    // Clear existing zero data before sync
+    const { data: existingData } = await supabaseAdmin
+      .from('fortnox_historical_data')
+      .select('*')
+      .eq('company', companyForData)
+      .eq('year', targetYear);
+    
+    if (existingData && existingData.length === 12) {
+      const allZeros = existingData.every((row: any) => 
+        row.revenue === 0 && row.cogs === 0 && row.personnel === 0 && 
+        row.marketing === 0 && row.office === 0 && row.other_opex === 0
+      );
+      if (allZeros) {
+        console.log(`Clearing ${existingData.length} zero rows for ${companyForData} ${targetYear}`);
+        await supabaseAdmin
+          .from('fortnox_historical_data')
+          .delete()
+          .eq('company', companyForData)
+          .eq('year', targetYear);
+      }
+    }
+
+    const monthlyData = [];
+    let totalVouchersScanned = 0;
+    let usedDetailFetch = false;
+
+    for (let month = 1; month <= 12; month++) {
       const fromDate = `${targetYear}-${String(month).padStart(2, '0')}-01`;
       const lastDay = new Date(targetYear, month, 0).getDate();
       const toDate = `${targetYear}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
       console.log(`Fetching data for ${fromDate} to ${toDate}`);
 
-      // Fetch financial summary for the month - Try vouchers (most reliable)
-      // First, find financial year ID that includes targetYear
       const fy = (financialYearsData?.FinancialYears || []).find((y: any) => (new Date(y.FromDate)).getFullYear() === targetYear);
       const fyId = fy?.Id;
 
-      let revenue = 0;        // 3000-3999 Intäkter
-      let cogs = 0;          // 4000-4999 Kostnad för sålda varor
-      let personnel = 0;     // 7000-7699 Personalkostnader
-      let marketing = 0;     // 6000-6099 Marknadsföring/försäljning
-      let office = 0;        // 5000-5999 + 6100-6999 Lokalkostnader m.m.
-      let other_opex = 0;    // 7700-7999 Övriga rörelsekostnader
+      let revenue = 0;
+      let cogs = 0;
+      let personnel = 0;
+      let marketing = 0;
+      let office = 0;
+      let other_opex = 0;
 
       if (fyId) {
         let page = 1;
         let totalPages = 1;
+        const allVouchersForMonth: any[] = [];
+        
+        // Fetch all voucher list pages
         do {
           let attempt = 0;
           let vouchersResp: Response | null = null;
+          
           do {
             vouchersResp = await fetch(`https://api.fortnox.se/3/vouchers?financialyear=${fyId}&fromdate=${fromDate}&todate=${toDate}&page=${page}`, {
               method: 'GET',
@@ -228,63 +276,96 @@ Deno.serve(async (req) => {
             });
             if (vouchersResp.ok) break;
             const status = vouchersResp.status;
-            const errTxt = await vouchersResp.text();
-            console.error(`Vouchers API error for ${fromDate}-${toDate} p${page} (attempt ${attempt + 1}):`, status, errTxt);
             if (status === 429 && attempt < 2) {
-              // backoff
-              await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+              await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
               attempt++;
               continue;
             }
-            // Non-retriable
             vouchersResp = null;
             break;
           } while (attempt < 3);
 
-          if (!vouchersResp) {
-            break;
-          }
+          if (!vouchersResp) break;
 
           const vouchersData = await vouchersResp.json();
           const meta = vouchersData?.MetaInformation || vouchersData?.meta || {};
           totalPages = parseInt(meta['@TotalPages'] || meta.total_pages || '1') || 1;
 
           const vouchers = vouchersData?.Vouchers || vouchersData?.vouchers || [];
-          for (const v of vouchers) {
+          allVouchersForMonth.push(...vouchers);
+
+          page += 1;
+          await new Promise(r => setTimeout(r, 200));
+        } while (page <= totalPages);
+
+        console.log(`Found ${allVouchersForMonth.length} vouchers for ${month}/${targetYear}`);
+        totalVouchersScanned += allVouchersForMonth.length;
+
+        // Check if first voucher has rows
+        const needsDetailFetch = allVouchersForMonth.length > 0 && 
+          !(allVouchersForMonth[0]?.VoucherRows || allVouchersForMonth[0]?.voucherRows || allVouchersForMonth[0]?.Rows);
+        
+        if (needsDetailFetch) {
+          console.log('VoucherRows not in list response, fetching details...');
+          usedDetailFetch = true;
+          
+          // Fetch details in batches of 4
+          const batchSize = 4;
+          for (let i = 0; i < allVouchersForMonth.length; i += batchSize) {
+            const batch = allVouchersForMonth.slice(i, i + batchSize);
+            const detailPromises = batch.map(v => {
+              const series = v?.VoucherSeries || v?.Series || '';
+              const num = v?.VoucherNumber || v?.Number || '';
+              return series && num ? fetchVoucherDetails(series, num, fyId) : Promise.resolve(null);
+            });
+            
+            const details = await Promise.all(detailPromises);
+            
+            for (const detail of details) {
+              if (!detail) continue;
+              const rows = detail?.VoucherRows || detail?.voucherRows || detail?.Rows || [];
+              
+              for (const row of rows) {
+                const accountVal = row.Account ?? row.account ?? row.AccountNumber ?? row.accountNumber ?? 0;
+                const accountNum = Number(String(accountVal).replace(/[^0-9]/g, '')) || 0;
+                const debit = toNumber(row.Debit ?? row.debit ?? row.AmountDebit ?? 0);
+                const credit = toNumber(row.Credit ?? row.credit ?? row.AmountCredit ?? 0);
+                const net = debit - credit;
+
+                if (accountNum >= 3000 && accountNum <= 3999) revenue += Math.abs(net);
+                else if (accountNum >= 4000 && accountNum <= 4999) cogs += Math.abs(net);
+                else if (accountNum >= 7000 && accountNum <= 7699) personnel += Math.abs(net);
+                else if (accountNum >= 6000 && accountNum <= 6099) marketing += Math.abs(net);
+                else if ((accountNum >= 5000 && accountNum <= 5999) || (accountNum >= 6100 && accountNum <= 6999)) office += Math.abs(net);
+                else if (accountNum >= 7700 && accountNum <= 7999) other_opex += Math.abs(net);
+              }
+            }
+            
+            await new Promise(r => setTimeout(r, 300));
+          }
+        } else {
+          // Process rows directly from list
+          for (const v of allVouchersForMonth) {
             const rows = v?.VoucherRows || v?.voucherRows || v?.Rows || [];
             for (const row of rows) {
               const accountVal = row.Account ?? row.account ?? row.AccountNumber ?? row.accountNumber ?? 0;
               const accountNum = Number(String(accountVal).replace(/[^0-9]/g, '')) || 0;
               const debit = toNumber(row.Debit ?? row.debit ?? row.AmountDebit ?? 0);
               const credit = toNumber(row.Credit ?? row.credit ?? row.AmountCredit ?? 0);
-              const net = debit - credit; // debit positive, credit negative
+              const net = debit - credit;
 
-              if (accountNum >= 3000 && accountNum <= 3999) {
-                revenue += Math.abs(net);
-              } else if (accountNum >= 4000 && accountNum <= 4999) {
-                cogs += Math.abs(net);
-              } else if (accountNum >= 7000 && accountNum <= 7699) {
-                personnel += Math.abs(net);
-              } else if (accountNum >= 6000 && accountNum <= 6099) {
-                marketing += Math.abs(net);
-              } else if ((accountNum >= 5000 && accountNum <= 5999) || (accountNum >= 6100 && accountNum <= 6999)) {
-                office += Math.abs(net);
-              } else if (accountNum >= 7700 && accountNum <= 7999) {
-                other_opex += Math.abs(net);
-              }
+              if (accountNum >= 3000 && accountNum <= 3999) revenue += Math.abs(net);
+              else if (accountNum >= 4000 && accountNum <= 4999) cogs += Math.abs(net);
+              else if (accountNum >= 7000 && accountNum <= 7699) personnel += Math.abs(net);
+              else if (accountNum >= 6000 && accountNum <= 6099) marketing += Math.abs(net);
+              else if ((accountNum >= 5000 && accountNum <= 5999) || (accountNum >= 6100 && accountNum <= 6999)) office += Math.abs(net);
+              else if (accountNum >= 7700 && accountNum <= 7999) other_opex += Math.abs(net);
             }
           }
-
-          page += 1;
-          // small delay to avoid rate limit
-          await new Promise((r) => setTimeout(r, 200));
-        } while (page <= totalPages);
-      } else {
-        console.warn('Could not determine financial year ID for targetYear', targetYear);
+        }
       }
 
       const gross_profit = revenue - cogs;
-
       console.log(`Totals ${targetYear}-${String(month).padStart(2,'0')}:`, { revenue, cogs, personnel, marketing, office, other_opex });
 
       const data = {
@@ -300,19 +381,15 @@ Deno.serve(async (req) => {
         other_opex: Math.round(other_opex),
       };
 
-      // Only upsert if we actually have data (avoid overwriting with zeros)
       const hasAnyValue = (data.revenue + data.cogs + data.personnel + data.marketing + data.office + data.other_opex) > 0;
       if (!hasAnyValue) {
-        console.log(`No data for ${targetYear}-${month}, skipping upsert to avoid zeros.`);
+        console.log(`No data for ${targetYear}-${month}, skipping upsert.`);
         continue;
       }
 
-      // Upsert data to database
       const { error } = await supabaseAdmin
         .from('fortnox_historical_data')
-        .upsert(data, {
-          onConflict: 'company,year,month',
-        });
+        .upsert(data, { onConflict: 'company,year,month' });
 
       if (error) {
         console.error('Error inserting data for month', month, ':', error);
@@ -321,15 +398,21 @@ Deno.serve(async (req) => {
         monthlyData.push(data);
       }
 
-      // small delay between months to avoid rate limits
-      await new Promise((r) => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 200));
     }
+
+    console.log(`Sync complete: ${totalVouchersScanned} vouchers scanned, ${monthlyData.length} months imported, detail fetch: ${usedDetailFetch}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: 'Fortnox data synced successfully',
         data: monthlyData,
+        meta: {
+          vouchersScanned: totalVouchersScanned,
+          monthsImported: monthlyData.length,
+          usedDetailFetch,
+        },
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
