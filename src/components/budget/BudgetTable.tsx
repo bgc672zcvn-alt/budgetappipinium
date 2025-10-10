@@ -181,6 +181,57 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
             <RefreshCw className="h-4 w-4 mr-2" />
             Synka Fortnox
           </Button>
+          
+          <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Importera allt
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Full import från Fortnox</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <p className="text-sm text-muted-foreground">
+                  Importerar all historisk data för vald tidsperiod. Detta kan ta flera minuter beroende på datamängd.
+                </p>
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="start-year">Startår</Label>
+                    <Input
+                      id="start-year"
+                      type="number"
+                      value={importStartYear}
+                      onChange={(e) => setImportStartYear(parseInt(e.target.value))}
+                      min={2000}
+                      max={currentYear}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="end-year">Slutår</Label>
+                    <Input
+                      id="end-year"
+                      type="number"
+                      value={importEndYear}
+                      onChange={(e) => setImportEndYear(parseInt(e.target.value))}
+                      min={importStartYear}
+                      max={currentYear}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsImportDialogOpen(false)}>
+                  Avbryt
+                </Button>
+                <Button onClick={handleFullImport}>
+                  Starta import
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
       <div className="relative">
