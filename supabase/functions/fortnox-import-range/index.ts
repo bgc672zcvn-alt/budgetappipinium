@@ -282,6 +282,36 @@ Deno.serve(async (req) => {
       };
       
       let lastHeartbeat = Date.now();
+      let isRunning = true;
+      const STALL_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+
+      // Stall detector - runs in parallel
+      const stallDetector = (async () => {
+        while (isRunning) {
+          await sleep(60000); // Check every minute
+          
+          if (!isRunning) break;
+          
+          const timeSinceHeartbeat = Date.now() - lastHeartbeat;
+          if (timeSinceHeartbeat > STALL_TIMEOUT_MS) {
+            console.error(`[stallDetector] Import stalled! No heartbeat for ${Math.floor(timeSinceHeartbeat / 60000)} minutes`);
+            try {
+              await supabaseClient
+                .from('fortnox_import_jobs')
+                .update({
+                  status: 'failed',
+                  last_error: `Import stalled - no progress for ${Math.floor(timeSinceHeartbeat / 60000)} minutes`,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', job.id);
+              isRunning = false;
+              break;
+            } catch (err) {
+              console.error('[stallDetector] Failed to mark job as failed:', err);
+            }
+          }
+        }
+      })();
 
       try {
         console.log(`[fortnox-import] Starting import for ${targetCompany}, years ${start}-${end}`);
@@ -489,6 +519,7 @@ Deno.serve(async (req) => {
         }
 
         // Mark as succeeded
+        isRunning = false; // Stop stall detector
         await supabaseClient
           .from('fortnox_import_jobs')
           .update({
@@ -503,6 +534,7 @@ Deno.serve(async (req) => {
       } catch (err) {
         const error = err as Error;
         console.error('Import failed:', error);
+        isRunning = false; // Stop stall detector
         await supabaseClient
           .from('fortnox_import_jobs')
           .update({
@@ -512,6 +544,9 @@ Deno.serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq('id', job.id);
+      } finally {
+        // Ensure stall detector stops
+        isRunning = false;
       }
     })());
 
