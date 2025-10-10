@@ -20,6 +20,14 @@ interface FortnoxAccount {
   Year: number;
 }
 
+// Safe numeric parsing for Fortnox amounts (handles spaces and commas)
+const toNumber = (val: unknown): number => {
+  if (val === null || val === undefined) return 0;
+  const s = String(val).replace(/\s+/g, '').replace(',', '.');
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+};
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -245,9 +253,10 @@ Deno.serve(async (req) => {
           for (const v of vouchers) {
             const rows = v?.VoucherRows || v?.voucherRows || v?.Rows || [];
             for (const row of rows) {
-              const accountNum = parseInt(row.Account || row.account || '0');
-              const debit = parseFloat((row.Debit ?? row.debit ?? '0').toString());
-              const credit = parseFloat((row.Credit ?? row.credit ?? '0').toString());
+              const accountVal = row.Account ?? row.account ?? row.AccountNumber ?? row.accountNumber ?? 0;
+              const accountNum = Number(String(accountVal).replace(/[^0-9]/g, '')) || 0;
+              const debit = toNumber(row.Debit ?? row.debit ?? row.AmountDebit ?? 0);
+              const credit = toNumber(row.Credit ?? row.credit ?? row.AmountCredit ?? 0);
               const net = debit - credit; // debit positive, credit negative
 
               if (accountNum >= 3000 && accountNum <= 3999) {
@@ -275,6 +284,8 @@ Deno.serve(async (req) => {
       }
 
       const gross_profit = revenue - cogs;
+
+      console.log(`Totals ${targetYear}-${String(month).padStart(2,'0')}:`, { revenue, cogs, personnel, marketing, office, other_opex });
 
       const data = {
         company: companyForData,

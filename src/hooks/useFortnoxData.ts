@@ -63,7 +63,9 @@ export const useFortnoxAvailableYears = (company: string) => {
 
       if (error) throw error;
 
-      const years = Array.from(new Set((data as { year: number }[]).map(d => Number(d.year)))).sort((a, b) => b - a);
+      const dbYears = Array.from(new Set((data as { year: number }[]).map(d => Number(d.year))));
+      const currentYear = new Date().getFullYear();
+      const years = Array.from(new Set([...dbYears, currentYear, currentYear - 1])).sort((a, b) => b - a);
       return years;
     },
   });
