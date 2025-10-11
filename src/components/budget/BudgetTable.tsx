@@ -10,21 +10,8 @@ import {
 } from "@/components/ui/table";
 import { BudgetData } from "@/types/budget";
 import { CommentButton } from "@/components/comments/CommentButton";
-import { ComparisonRow } from "./ComparisonRow";
-import { useFortnoxData } from "@/hooks/useFortnoxData";
-import { Button } from "@/components/ui/button";
-import { RefreshCw, Download } from "lucide-react";
-import { useSyncFortnoxData, useFortnoxAvailableYears } from "@/hooks/useFortnoxData";
-import { toast } from "sonner";
-import { getAnnualTotals } from "@/lib/budgetMath";
-import { Badge } from "@/components/ui/badge";
+import { useFortnoxData, useFortnoxAvailableYears } from "@/hooks/useFortnoxData";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { useImportJob, useStartFullImport } from "@/hooks/useImportJobs";
-import { ImportStatusPanel } from "./ImportStatusPanel";
-import { useQueryClient } from "@tanstack/react-query";
 
 interface BudgetTableProps {
   budget: BudgetData;
@@ -35,20 +22,12 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
   const totals = getAnnualTotals(budget);
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = React.useState<number>(currentYear);
-  const [isSyncing, setIsSyncing] = React.useState(false);
-  const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
-  const [importStartYear, setImportStartYear] = React.useState(currentYear - 1);
-  const [importEndYear, setImportEndYear] = React.useState(currentYear);
-  const [activeJobId, setActiveJobId] = React.useState<string | null>(null);
   
   const targetYear = selectedYear;
   const queryClient = useQueryClient();
   
-  const { data: historicalData, isLoading, refetch } = useFortnoxData(budget.company, targetYear);
-  const { syncData } = useSyncFortnoxData();
+  const { data: historicalData } = useFortnoxData(budget.company, targetYear);
   const { data: availableYears } = useFortnoxAvailableYears(budget.company);
-  const { startImport } = useStartFullImport();
-  const { data: importJob } = useImportJob(activeJobId);
 
   React.useEffect(() => {
     if (availableYears?.length) {
