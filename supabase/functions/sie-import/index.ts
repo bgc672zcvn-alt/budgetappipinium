@@ -129,31 +129,31 @@ Deno.serve(async (req) => {
       }
 
       const accountNum = parseInt(trans.account);
-      const amount = trans.amount; // Keep sign from SIE file
+      const amount = trans.amount; // Keep original sign from SIE file
 
-      // Map accounts to categories (Swedish account plan)
-      // In SIE files, credit transactions (negative) for revenue accounts mean income
+      // Map accounts to categories (Swedish BAS account plan)
+      // In SIE: Revenue (3xxx) is normally negative (credit), Expenses are positive (debit)
       if (accountNum >= 3000 && accountNum <= 3999) {
-        // Revenue accounts - credit (negative) means income, so negate
-        monthlyDataMap[month].revenue += Math.abs(amount);
+        // Revenue accounts (3xxx) - negative in SIE means income, so we negate to get positive revenue
+        monthlyDataMap[month].revenue -= amount;
       } else if (accountNum >= 4000 && accountNum <= 4999) {
-        // Material/goods (COGS) - debit (positive) means expense
-        monthlyDataMap[month].cogs += Math.abs(amount);
+        // Cost of goods sold (4xxx) - positive (debit) means expense
+        monthlyDataMap[month].cogs += amount;
       } else if (accountNum >= 7000 && accountNum <= 7699) {
-        // Personnel costs - debit (positive) means expense
-        monthlyDataMap[month].personnel += Math.abs(amount);
-      } else if (accountNum >= 6000 && accountNum <= 6499) {
-        // Marketing and sales - debit (positive) means expense
-        monthlyDataMap[month].marketing += Math.abs(amount);
-      } else if (accountNum >= 5000 && accountNum <= 5999) {
-        // Office and premises - debit (positive) means expense
-        monthlyDataMap[month].office += Math.abs(amount);
-      } else if (accountNum >= 6500 && accountNum <= 6999) {
-        // Other external costs - debit (positive) means expense
-        monthlyDataMap[month].other_opex += Math.abs(amount);
+        // Personnel costs (70xx-76xx) - positive (debit) means expense
+        monthlyDataMap[month].personnel += amount;
+      } else if (accountNum >= 5900 && accountNum <= 5999) {
+        // Marketing and advertising (59xx) - positive (debit) means expense
+        monthlyDataMap[month].marketing += amount;
+      } else if (accountNum >= 5000 && accountNum <= 5899) {
+        // Office, premises, etc (50xx-58xx) - positive (debit) means expense
+        monthlyDataMap[month].office += amount;
+      } else if (accountNum >= 6000 && accountNum <= 6999) {
+        // Other external costs (60xx-69xx) - positive (debit) means expense
+        monthlyDataMap[month].other_opex += amount;
       } else if (accountNum >= 7700 && accountNum <= 7999) {
-        // Depreciation and other operating expenses - debit (positive) means expense
-        monthlyDataMap[month].other_opex += Math.abs(amount);
+        // Depreciation and financial expenses (77xx-79xx) - positive (debit) means expense
+        monthlyDataMap[month].other_opex += amount;
       }
     }
 
