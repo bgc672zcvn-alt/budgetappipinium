@@ -12,6 +12,7 @@ import { BudgetData } from "@/types/budget";
 import { CommentButton } from "@/components/comments/CommentButton";
 import { useFortnoxData, useFortnoxAvailableYears } from "@/hooks/useFortnoxData";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 interface BudgetTableProps {
   budget: BudgetData;
@@ -77,6 +78,39 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
       const monthData = historicalData.find(d => d.month === index + 1);
       return monthData ? Number(monthData[field]) : 0;
     });
+  };
+
+  // Calculate previous year totals
+  const prevYearRevenue = historicalData?.reduce((sum, d) => sum + Number(d.revenue), 0) || 0;
+  const prevYearCogs = historicalData?.reduce((sum, d) => sum + Number(d.cogs), 0) || 0;
+  const prevYearGrossProfit = prevYearRevenue - prevYearCogs;
+  const prevYearGrossMargin = prevYearRevenue > 0 ? (prevYearGrossProfit / prevYearRevenue) * 100 : 0;
+  const prevYearPersonnel = historicalData?.reduce((sum, d) => sum + Number(d.personnel), 0) || 0;
+  const prevYearMarketing = historicalData?.reduce((sum, d) => sum + Number(d.marketing), 0) || 0;
+  const prevYearOffice = historicalData?.reduce((sum, d) => sum + Number(d.office), 0) || 0;
+  const prevYearOtherOpex = historicalData?.reduce((sum, d) => sum + Number(d.other_opex), 0) || 0;
+  const prevYearTotalOpex = prevYearPersonnel + prevYearMarketing + prevYearOffice + prevYearOtherOpex;
+  const prevYearDepreciation = 0;
+  const prevYearEbit = prevYearGrossProfit - prevYearTotalOpex - prevYearDepreciation;
+  const prevYearEbitMargin = prevYearRevenue > 0 ? (prevYearEbit / prevYearRevenue) * 100 : 0;
+  const prevYearFinancial = 0;
+  const prevYearResult = prevYearEbit - prevYearFinancial;
+
+  const calculateChange = (current: number, previous: number) => {
+    if (previous === 0) return 0;
+    return ((current - previous) / previous) * 100;
+  };
+
+  const getTrendIcon = (change: number) => {
+    if (Math.abs(change) < 0.1) return <Minus className="h-3 w-3 text-muted-foreground" />;
+    if (change > 0) return <TrendingUp className="h-3 w-3 text-success" />;
+    return <TrendingDown className="h-3 w-3 text-destructive" />;
+  };
+
+  const getTrendColor = (change: number) => {
+    if (Math.abs(change) < 0.1) return "text-muted-foreground";
+    if (change > 0) return "text-success";
+    return "text-destructive";
   };
 
   return (
@@ -331,60 +365,146 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
                 Total (alla 12 månader{viewName ? ` – ${viewName}` : ''})
               </TableCell>
               <TableCell className="text-right">
-                {formatCurrency(totals.revenue)}
-              </TableCell>
-              <TableCell className="text-right text-destructive">
-                {formatCurrency(totals.cogs)}
-              </TableCell>
-              <TableCell className="text-right text-success">
-                {formatCurrency(totals.grossProfit)}
-              </TableCell>
-              <TableCell className="text-right text-success">
-                {totals.revenue > 0 ? ((totals.grossProfit / totals.revenue) * 100).toFixed(1) : '0.0'}%
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-bold">{formatCurrency(totals.revenue)}</span>
+                  <span className="text-xs text-muted-foreground font-normal">{formatCurrency(prevYearRevenue)}</span>
+                  <div className={`flex items-center gap-1 justify-end text-xs ${getTrendColor(calculateChange(totals.revenue, prevYearRevenue))}`}>
+                    {getTrendIcon(calculateChange(totals.revenue, prevYearRevenue))}
+                    <span>{Math.abs(calculateChange(totals.revenue, prevYearRevenue)).toFixed(1)}%</span>
+                  </div>
+                </div>
               </TableCell>
               <TableCell className="text-right">
-                {formatCurrency(
-                  budget.monthlyData.reduce((sum, m) => sum + m.personnel, 0)
-                )}
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-bold text-destructive">{formatCurrency(totals.cogs)}</span>
+                  <span className="text-xs text-muted-foreground font-normal">{formatCurrency(prevYearCogs)}</span>
+                  <div className={`flex items-center gap-1 justify-end text-xs ${getTrendColor(calculateChange(totals.cogs, prevYearCogs))}`}>
+                    {getTrendIcon(calculateChange(totals.cogs, prevYearCogs))}
+                    <span>{Math.abs(calculateChange(totals.cogs, prevYearCogs)).toFixed(1)}%</span>
+                  </div>
+                </div>
               </TableCell>
               <TableCell className="text-right">
-                {formatCurrency(
-                  budget.monthlyData.reduce((sum, m) => sum + m.marketing, 0)
-                )}
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-bold text-success">{formatCurrency(totals.grossProfit)}</span>
+                  <span className="text-xs text-muted-foreground font-normal">{formatCurrency(prevYearGrossProfit)}</span>
+                  <div className={`flex items-center gap-1 justify-end text-xs ${getTrendColor(calculateChange(totals.grossProfit, prevYearGrossProfit))}`}>
+                    {getTrendIcon(calculateChange(totals.grossProfit, prevYearGrossProfit))}
+                    <span>{Math.abs(calculateChange(totals.grossProfit, prevYearGrossProfit)).toFixed(1)}%</span>
+                  </div>
+                </div>
               </TableCell>
               <TableCell className="text-right">
-                {formatCurrency(
-                  budget.monthlyData.reduce((sum, m) => sum + m.office, 0)
-                )}
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-bold text-success">{totals.revenue > 0 ? ((totals.grossProfit / totals.revenue) * 100).toFixed(1) : '0.0'}%</span>
+                  <span className="text-xs text-muted-foreground font-normal">{prevYearGrossMargin.toFixed(1)}%</span>
+                  <div className={`flex items-center gap-1 justify-end text-xs ${getTrendColor(calculateChange((totals.grossProfit / totals.revenue) * 100, prevYearGrossMargin))}`}>
+                    {getTrendIcon(calculateChange((totals.grossProfit / totals.revenue) * 100, prevYearGrossMargin))}
+                    <span>{Math.abs(calculateChange((totals.grossProfit / totals.revenue) * 100, prevYearGrossMargin)).toFixed(1)}%</span>
+                  </div>
+                </div>
               </TableCell>
               <TableCell className="text-right">
-                {formatCurrency(
-                  budget.monthlyData.reduce((sum, m) => sum + m.otherOpex, 0)
-                )}
-              </TableCell>
-              <TableCell className="text-right text-destructive">
-                {formatCurrency(totals.totalOpex)}
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-bold">{formatCurrency(budget.monthlyData.reduce((sum, m) => sum + m.personnel, 0))}</span>
+                  <span className="text-xs text-muted-foreground font-normal">{formatCurrency(prevYearPersonnel)}</span>
+                  <div className={`flex items-center gap-1 justify-end text-xs ${getTrendColor(calculateChange(budget.monthlyData.reduce((sum, m) => sum + m.personnel, 0), prevYearPersonnel))}`}>
+                    {getTrendIcon(calculateChange(budget.monthlyData.reduce((sum, m) => sum + m.personnel, 0), prevYearPersonnel))}
+                    <span>{Math.abs(calculateChange(budget.monthlyData.reduce((sum, m) => sum + m.personnel, 0), prevYearPersonnel)).toFixed(1)}%</span>
+                  </div>
+                </div>
               </TableCell>
               <TableCell className="text-right">
-                {formatCurrency(
-                  budget.monthlyData.reduce((sum, m) => sum + m.depreciation, 0)
-                )}
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-bold">{formatCurrency(budget.monthlyData.reduce((sum, m) => sum + m.marketing, 0))}</span>
+                  <span className="text-xs text-muted-foreground font-normal">{formatCurrency(prevYearMarketing)}</span>
+                  <div className={`flex items-center gap-1 justify-end text-xs ${getTrendColor(calculateChange(budget.monthlyData.reduce((sum, m) => sum + m.marketing, 0), prevYearMarketing))}`}>
+                    {getTrendIcon(calculateChange(budget.monthlyData.reduce((sum, m) => sum + m.marketing, 0), prevYearMarketing))}
+                    <span>{Math.abs(calculateChange(budget.monthlyData.reduce((sum, m) => sum + m.marketing, 0), prevYearMarketing)).toFixed(1)}%</span>
+                  </div>
+                </div>
               </TableCell>
-              <TableCell className="text-right text-accent">
-                {formatCurrency(totals.ebit)}
+              <TableCell className="text-right">
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-bold">{formatCurrency(budget.monthlyData.reduce((sum, m) => sum + m.office, 0))}</span>
+                  <span className="text-xs text-muted-foreground font-normal">{formatCurrency(prevYearOffice)}</span>
+                  <div className={`flex items-center gap-1 justify-end text-xs ${getTrendColor(calculateChange(budget.monthlyData.reduce((sum, m) => sum + m.office, 0), prevYearOffice))}`}>
+                    {getTrendIcon(calculateChange(budget.monthlyData.reduce((sum, m) => sum + m.office, 0), prevYearOffice))}
+                    <span>{Math.abs(calculateChange(budget.monthlyData.reduce((sum, m) => sum + m.office, 0), prevYearOffice)).toFixed(1)}%</span>
+                  </div>
+                </div>
               </TableCell>
-              <TableCell className="text-right text-accent">
-                {totals.ebitMargin.toFixed(1)}%
+              <TableCell className="text-right">
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-bold">{formatCurrency(budget.monthlyData.reduce((sum, m) => sum + m.otherOpex, 0))}</span>
+                  <span className="text-xs text-muted-foreground font-normal">{formatCurrency(prevYearOtherOpex)}</span>
+                  <div className={`flex items-center gap-1 justify-end text-xs ${getTrendColor(calculateChange(budget.monthlyData.reduce((sum, m) => sum + m.otherOpex, 0), prevYearOtherOpex))}`}>
+                    {getTrendIcon(calculateChange(budget.monthlyData.reduce((sum, m) => sum + m.otherOpex, 0), prevYearOtherOpex))}
+                    <span>{Math.abs(calculateChange(budget.monthlyData.reduce((sum, m) => sum + m.otherOpex, 0), prevYearOtherOpex)).toFixed(1)}%</span>
+                  </div>
+                </div>
               </TableCell>
-              <TableCell className="text-right text-destructive">
-                {formatCurrency(totals.financialCosts)}
+              <TableCell className="text-right">
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-bold text-destructive">{formatCurrency(totals.totalOpex)}</span>
+                  <span className="text-xs text-muted-foreground font-normal">{formatCurrency(prevYearTotalOpex)}</span>
+                  <div className={`flex items-center gap-1 justify-end text-xs ${getTrendColor(calculateChange(totals.totalOpex, prevYearTotalOpex))}`}>
+                    {getTrendIcon(calculateChange(totals.totalOpex, prevYearTotalOpex))}
+                    <span>{Math.abs(calculateChange(totals.totalOpex, prevYearTotalOpex)).toFixed(1)}%</span>
+                  </div>
+                </div>
               </TableCell>
-              <TableCell className={`text-right font-semibold ${
-                totals.resultAfterFinancial >= 0 
-                  ? 'text-success' 
-                  : 'text-destructive'
-              }`}>
-                {formatCurrency(totals.resultAfterFinancial)}
+              <TableCell className="text-right">
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-bold">{formatCurrency(budget.monthlyData.reduce((sum, m) => sum + m.depreciation, 0))}</span>
+                  <span className="text-xs text-muted-foreground font-normal">{formatCurrency(prevYearDepreciation)}</span>
+                  <div className={`flex items-center gap-1 justify-end text-xs ${getTrendColor(calculateChange(budget.monthlyData.reduce((sum, m) => sum + m.depreciation, 0), prevYearDepreciation))}`}>
+                    {getTrendIcon(calculateChange(budget.monthlyData.reduce((sum, m) => sum + m.depreciation, 0), prevYearDepreciation))}
+                    <span>{Math.abs(calculateChange(budget.monthlyData.reduce((sum, m) => sum + m.depreciation, 0), prevYearDepreciation)).toFixed(1)}%</span>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-bold text-accent">{formatCurrency(totals.ebit)}</span>
+                  <span className="text-xs text-muted-foreground font-normal">{formatCurrency(prevYearEbit)}</span>
+                  <div className={`flex items-center gap-1 justify-end text-xs ${getTrendColor(calculateChange(totals.ebit, prevYearEbit))}`}>
+                    {getTrendIcon(calculateChange(totals.ebit, prevYearEbit))}
+                    <span>{Math.abs(calculateChange(totals.ebit, prevYearEbit)).toFixed(1)}%</span>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-bold text-accent">{totals.ebitMargin.toFixed(1)}%</span>
+                  <span className="text-xs text-muted-foreground font-normal">{prevYearEbitMargin.toFixed(1)}%</span>
+                  <div className={`flex items-center gap-1 justify-end text-xs ${getTrendColor(calculateChange(totals.ebitMargin, prevYearEbitMargin))}`}>
+                    {getTrendIcon(calculateChange(totals.ebitMargin, prevYearEbitMargin))}
+                    <span>{Math.abs(calculateChange(totals.ebitMargin, prevYearEbitMargin)).toFixed(1)}%</span>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-bold text-destructive">{formatCurrency(totals.financialCosts)}</span>
+                  <span className="text-xs text-muted-foreground font-normal">{formatCurrency(prevYearFinancial)}</span>
+                  <div className={`flex items-center gap-1 justify-end text-xs ${getTrendColor(calculateChange(totals.financialCosts, prevYearFinancial))}`}>
+                    {getTrendIcon(calculateChange(totals.financialCosts, prevYearFinancial))}
+                    <span>{Math.abs(calculateChange(totals.financialCosts, prevYearFinancial)).toFixed(1)}%</span>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex flex-col items-end gap-1">
+                  <span className={`font-bold ${totals.resultAfterFinancial >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {formatCurrency(totals.resultAfterFinancial)}
+                  </span>
+                  <span className="text-xs text-muted-foreground font-normal">{formatCurrency(prevYearResult)}</span>
+                  <div className={`flex items-center gap-1 justify-end text-xs ${getTrendColor(calculateChange(totals.resultAfterFinancial, prevYearResult))}`}>
+                    {getTrendIcon(calculateChange(totals.resultAfterFinancial, prevYearResult))}
+                    <span>{Math.abs(calculateChange(totals.resultAfterFinancial, prevYearResult)).toFixed(1)}%</span>
+                  </div>
+                </div>
               </TableCell>
             </TableRow>
           </TableBody>
