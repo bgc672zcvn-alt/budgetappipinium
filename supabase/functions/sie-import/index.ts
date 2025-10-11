@@ -129,30 +129,31 @@ Deno.serve(async (req) => {
       }
 
       const accountNum = parseInt(trans.account);
-      const amount = Math.abs(trans.amount);
+      const amount = trans.amount; // Keep sign from SIE file
 
       // Map accounts to categories (Swedish account plan)
+      // In SIE files, credit transactions (negative) for revenue accounts mean income
       if (accountNum >= 3000 && accountNum <= 3999) {
-        // Revenue accounts
-        monthlyDataMap[month].revenue += amount;
+        // Revenue accounts - credit (negative) means income, so negate
+        monthlyDataMap[month].revenue += Math.abs(amount);
       } else if (accountNum >= 4000 && accountNum <= 4999) {
-        // Material/goods (COGS)
-        monthlyDataMap[month].cogs += amount;
+        // Material/goods (COGS) - debit (positive) means expense
+        monthlyDataMap[month].cogs += Math.abs(amount);
       } else if (accountNum >= 7000 && accountNum <= 7699) {
-        // Personnel costs
-        monthlyDataMap[month].personnel += amount;
+        // Personnel costs - debit (positive) means expense
+        monthlyDataMap[month].personnel += Math.abs(amount);
       } else if (accountNum >= 6000 && accountNum <= 6499) {
-        // Marketing and sales
-        monthlyDataMap[month].marketing += amount;
+        // Marketing and sales - debit (positive) means expense
+        monthlyDataMap[month].marketing += Math.abs(amount);
       } else if (accountNum >= 5000 && accountNum <= 5999) {
-        // Office and premises
-        monthlyDataMap[month].office += amount;
+        // Office and premises - debit (positive) means expense
+        monthlyDataMap[month].office += Math.abs(amount);
       } else if (accountNum >= 6500 && accountNum <= 6999) {
-        // Other external costs
-        monthlyDataMap[month].other_opex += amount;
+        // Other external costs - debit (positive) means expense
+        monthlyDataMap[month].other_opex += Math.abs(amount);
       } else if (accountNum >= 7700 && accountNum <= 7999) {
-        // Depreciation and other operating expenses
-        monthlyDataMap[month].other_opex += amount;
+        // Depreciation and other operating expenses - debit (positive) means expense
+        monthlyDataMap[month].other_opex += Math.abs(amount);
       }
     }
 
