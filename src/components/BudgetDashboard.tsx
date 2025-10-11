@@ -9,6 +9,7 @@ import { BudgetTable } from "./budget/BudgetTable";
 import { BusinessAreasTable } from "./budget/BusinessAreasTable";
 import { ExpandableCostsTable } from "./budget/ExpandableCostsTable";
 import { VersionHistory } from "./budget/VersionHistory";
+import { NewBudgetYearDialog } from "./budget/NewBudgetYearDialog";
 import { ipiniumBudget, onepanBudget } from "@/data/budgetData";
 import { BudgetData } from "@/types/budget";
 import { supabase } from "@/integrations/supabase/client";
@@ -550,6 +551,19 @@ export const BudgetDashboard = () => {
               <img src={onepanLogo} alt="OnePan" className="h-12 object-contain" />
             </div>
             <div className="flex items-center gap-2">
+                <NewBudgetYearDialog 
+                  company={budget.company}
+                  onBudgetCreated={(year, newBudget) => {
+                    setBudgetData(prev => ({
+                      ...prev,
+                      [view]: newBudget,
+                    }));
+                    toast({
+                      title: "Budget skapad",
+                      description: `Budget för ${year} har skapats`,
+                    });
+                  }}
+                />
                 <Button 
                   variant="outline" 
                   size="sm" 
