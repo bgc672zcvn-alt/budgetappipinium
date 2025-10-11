@@ -49,50 +49,71 @@ Deno.serve(async (req) => {
     // Parse SIE content
     const lines = sieContent.split('\n');
     const transactions: SieTransaction[] = [];
-    let currentYear = new Date().getFullYear();
+    let currentVoucherDate = '';
 
-    for (const line of lines) {
-      const trimmed = line.trim();
+    for (let i = 0; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
       
-      // Extract year from #RAR (fiscal year)
-      if (trimmed.startsWith('#RAR')) {
-        const match = trimmed.match(/#RAR\s+\d+\s+(\d{4})/);
-        if (match) {
-          currentYear = parseInt(match[1]);
+      // Extract date from #VER (voucher header)
+      // Format: #VER "A" "1" 20240115 "Text" or #VER A 1 20240115
+      if (trimmed.startsWith('#VER')) {
+        const dateMatch = trimmed.match(/(\d{8})/);
+        if (dateMatch) {
+          const d = dateMatch[1];
+          currentVoucherDate = `${d.substring(0, 4)}-${d.substring(4, 6)}-${d.substring(6, 8)}`;
         }
       }
       
-      // Parse transactions from #VER (vouchers)
+      // Parse transactions from #TRANS (transaction lines)
+      // Format: #TRANS account {} amount [transdate] ["text"]
       if (trimmed.startsWith('#TRANS')) {
-        // Format: #TRANS account {} amount date \"text\"
-        const parts = trimmed.split(/\s+/);
+        // Remove quotes and split by whitespace
+        const cleaned = trimmed.replace(/"/g, '');
+        const parts = cleaned.split(/\s+/);
+        
         if (parts.length >= 4) {
           const account = parts[1];
-          const amountStr = parts[3].replace(',', '.');
-          const amount = parseFloat(amountStr);
+          // Amount can be at different positions, look for number with optional minus and comma/dot
+          let amount = 0;
+          let transDate = currentVoucherDate;
           
-          // Extract date if present
-          let date = '';
-          const dateMatch = trimmed.match(/(\d{8})/);
-          if (dateMatch) {
-            const d = dateMatch[1];
-            date = `${d.substring(0, 4)}-${d.substring(4, 6)}-${d.substring(6, 8)}`;
+          // Find amount (negative or positive number with comma or dot)
+          for (let j = 2; j < parts.length; j++) {
+            const part = parts[j];
+            if (/^-?\d+([.,]\d+)?$/.test(part)) {
+              amount = parseFloat(part.replace(',', '.'));
+              
+              // Check if next part is a date (8 digits)
+              if (j + 1 < parts.length && /^\d{8}$/.test(parts[j + 1])) {
+                const d = parts[j + 1];
+                transDate = `${d.substring(0, 4)}-${d.substring(4, 6)}-${d.substring(6, 8)}`;
+              }
+              break;
+            }
           }
           
-          if (!isNaN(amount) && account) {
-            transactions.push({ account, amount, date });
+          if (!isNaN(amount) && account && transDate) {
+            transactions.push({ account, amount, date: transDate });
           }
         }
       }
     }
 
     console.log(`[sie-import] Parsed ${transactions.length} transactions`);
+    
+    // Log sample transactions for debugging
+    if (transactions.length > 0) {
+      console.log('[sie-import] Sample transactions:', transactions.slice(0, 5));
+    }
 
     // Group transactions by month and categorize
     const monthlyDataMap: Record<string, MonthlyData> = {};
 
     for (const trans of transactions) {
-      if (!trans.date) continue;
+      if (!trans.date || trans.date.length < 7) {
+        console.log('[sie-import] Skipping transaction without valid date:', trans);
+        continue;
+      }
       
       const month = trans.date.substring(0, 7); // YYYY-MM
       if (!monthlyDataMap[month]) {
