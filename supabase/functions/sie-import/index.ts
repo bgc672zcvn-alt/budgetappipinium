@@ -101,10 +101,18 @@ Deno.serve(async (req) => {
 
     console.log(`[sie-import] Parsed ${transactions.length} transactions`);
     
-    // Log sample transactions for debugging
-    if (transactions.length > 0) {
-      console.log('[sie-import] Sample transactions:', transactions.slice(0, 5));
-    }
+    // Log sample transactions for debugging - include revenue and COGS accounts
+    const sampleRevenue = transactions.filter(t => {
+      const acc = parseInt(t.account);
+      return acc >= 3000 && acc <= 3999;
+    }).slice(0, 5);
+    const sampleCOGS = transactions.filter(t => {
+      const acc = parseInt(t.account);
+      return acc >= 4000 && acc <= 4999;
+    }).slice(0, 5);
+    
+    console.log('[sie-import] Sample revenue (3xxx) transactions:', sampleRevenue);
+    console.log('[sie-import] Sample COGS (4xxx) transactions:', sampleCOGS);
 
     // Group transactions by month and categorize
     const monthlyDataMap: Record<string, MonthlyData> = {};
