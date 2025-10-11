@@ -30,12 +30,31 @@ export const NewBudgetYearDialog = ({ company, onBudgetCreated }: NewBudgetYearD
     try {
       const previousYear = targetYear - 1;
 
+      // Check if budget for target year already exists
+      const { data: existingBudget } = await supabase
+        .from('budget_data')
+        .select('id')
+        .eq('company', company)
+        .eq('year', targetYear)
+        .maybeSingle();
+
+      if (existingBudget) {
+        toast({
+          title: "Budget finns redan",
+          description: `Budget för ${targetYear} finns redan. Välj ett annat år eller använd årsväljaren för att redigera den.`,
+          variant: "destructive",
+        });
+        setIsCreating(false);
+        return;
+      }
+
       // 1. Try to get previous year's budget from budget_data
       const { data: budgetData, error: budgetError } = await supabase
         .from('budget_data')
         .select('data')
         .eq('company', company)
-        .single();
+        .eq('year', previousYear)
+        .maybeSingle();
 
       if (budgetError && budgetError.code !== 'PGRST116') {
         throw budgetError;
@@ -172,9 +191,10 @@ export const NewBudgetYearDialog = ({ company, onBudgetCreated }: NewBudgetYearD
         .upsert([
           {
             company,
+            year: targetYear,
             data: newBudget as any,
           }
-        ], { onConflict: 'company' });
+        ], { onConflict: 'company,year' });
 
       onBudgetCreated(targetYear, newBudget);
       setOpen(false);

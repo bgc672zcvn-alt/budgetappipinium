@@ -21,6 +21,7 @@ export type Database = {
           data: Json
           id: string
           updated_at: string | null
+          year: number
         }
         Insert: {
           company: string
@@ -28,6 +29,7 @@ export type Database = {
           data: Json
           id?: string
           updated_at?: string | null
+          year?: number
         }
         Update: {
           company?: string
@@ -35,6 +37,7 @@ export type Database = {
           data?: Json
           id?: string
           updated_at?: string | null
+          year?: number
         }
         Relationships: []
       }

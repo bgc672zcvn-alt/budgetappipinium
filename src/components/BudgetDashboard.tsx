@@ -121,6 +121,8 @@ export const BudgetDashboard = () => {
   const { saveVersion, checkAdminStatus } = useBudgetHistory();
   const [view, setView] = useState<CompanyView>("ipinium");
   const [user, setUser] = useState<User | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [budgetData, setBudgetData] = useState<Record<CompanyView, BudgetData>>({
     ipinium: normalizeTotals(ipiniumBudget),
     onepan: normalizeTotals(onepanBudget),
@@ -157,13 +159,26 @@ export const BudgetDashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Ladda data från backend vid start
+  // Ladda tillgängliga år och data från backend vid start
   useEffect(() => {
     const loadBudgets = async () => {
       try {
+        // Hämta alla tillgängliga år
+        const { data: yearsData, error: yearsError } = await supabase
+          .from('budget_data')
+          .select('year')
+          .order('year', { ascending: false });
+
+        if (yearsError) throw yearsError;
+
+        const years = Array.from(new Set((yearsData || []).map(row => row.year)));
+        setAvailableYears(years.length > 0 ? years : [new Date().getFullYear()]);
+
+        // Hämta data för valt år
         const { data, error } = await supabase
           .from('budget_data')
-          .select('*');
+          .select('*')
+          .eq('year', selectedYear);
 
         if (error) throw error;
 
@@ -209,7 +224,7 @@ export const BudgetDashboard = () => {
     };
 
     loadBudgets();
-  }, []);
+  }, [selectedYear]);
 
   // Spara ändringar till backend - endast månadsdata, aldrig totalRevenue
   useEffect(() => {
@@ -221,7 +236,8 @@ export const BudgetDashboard = () => {
           .from('budget_data')
           .upsert([
             { 
-              company: 'Ipinium AB', 
+              company: 'Ipinium AB',
+              year: selectedYear,
               data: {
                 ...budgetData.ipinium,
                 totalRevenue: undefined, // Aldrig spara totalRevenue - det beräknas alltid
@@ -230,7 +246,8 @@ export const BudgetDashboard = () => {
               } as any 
             },
             { 
-              company: 'OnePan', 
+              company: 'OnePan',
+              year: selectedYear,
               data: {
                 ...budgetData.onepan,
                 totalRevenue: undefined, // Aldrig spara totalRevenue - det beräknas alltid
@@ -238,7 +255,7 @@ export const BudgetDashboard = () => {
                 costCategories: undefined,
               } as any 
             },
-          ], { onConflict: 'company' });
+          ], { onConflict: 'company,year' });
       } catch (error) {
         console.error('Fel vid sparande:', error);
         toast({
@@ -250,7 +267,7 @@ export const BudgetDashboard = () => {
     };
 
     saveBudgets();
-  }, [budgetData, isLoading, toast]);
+  }, [budgetData, isLoading, selectedYear, toast]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -554,6 +571,11 @@ export const BudgetDashboard = () => {
                 <NewBudgetYearDialog 
                   company={budget.company}
                   onBudgetCreated={(year, newBudget) => {
+                    setSelectedYear(year);
+                    setAvailableYears(prev => {
+                      const newYears = [...prev, year];
+                      return Array.from(new Set(newYears)).sort((a, b) => b - a);
+                    });
                     setBudgetData(prev => ({
                       ...prev,
                       [view]: newBudget,
@@ -601,11 +623,24 @@ export const BudgetDashboard = () => {
               </Button>
             </div>
           </div>
-          <div>
-            <h1 className="text-4xl font-bold text-foreground">Budget 2026</h1>
-            <p className="text-muted-foreground mt-2">
-              Finansiella prognoser och intäktsuppdelning
-            </p>
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-4xl font-bold text-foreground">Budget</h1>
+              <p className="text-muted-foreground mt-2">
+                Finansiella prognoser och intäktsuppdelning
+              </p>
+            </div>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="px-4 py-2 border rounded-md bg-background text-foreground"
+            >
+              {availableYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
