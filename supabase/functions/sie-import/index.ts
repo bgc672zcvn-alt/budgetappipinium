@@ -1,0 +1,202 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.74.0';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+interface SieTransaction {
+  account: string;
+  amount: number;
+  date: string;
+}
+
+interface MonthlyData {
+  revenue: number;
+  cogs: number;
+  gross_profit: number;
+  personnel: number;
+  marketing: number;
+  office: number;
+  other_opex: number;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing authorization header');
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      throw new Error('Unauthorized');
+    }
+
+    const { company, sieContent } = await req.json();
+    console.log(`[sie-import] Starting import for company: ${company}`);
+
+    // Parse SIE content
+    const lines = sieContent.split('\n');
+    const transactions: SieTransaction[] = [];
+    let currentYear = new Date().getFullYear();
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      // Extract year from #RAR (fiscal year)
+      if (trimmed.startsWith('#RAR')) {
+        const match = trimmed.match(/#RAR\s+\d+\s+(\d{4})/);
+        if (match) {
+          currentYear = parseInt(match[1]);
+        }
+      }
+      
+      // Parse transactions from #VER (vouchers)
+      if (trimmed.startsWith('#TRANS')) {
+        // Format: #TRANS account {} amount date \"text\"
+        const parts = trimmed.split(/\s+/);
+        if (parts.length >= 4) {
+          const account = parts[1];
+          const amountStr = parts[3].replace(',', '.');
+          const amount = parseFloat(amountStr);
+          
+          // Extract date if present
+          let date = '';
+          const dateMatch = trimmed.match(/(\d{8})/);
+          if (dateMatch) {
+            const d = dateMatch[1];
+            date = `${d.substring(0, 4)}-${d.substring(4, 6)}-${d.substring(6, 8)}`;
+          }
+          
+          if (!isNaN(amount) && account) {
+            transactions.push({ account, amount, date });
+          }
+        }
+      }
+    }
+
+    console.log(`[sie-import] Parsed ${transactions.length} transactions`);
+
+    // Group transactions by month and categorize
+    const monthlyDataMap: Record<string, MonthlyData> = {};
+
+    for (const trans of transactions) {
+      if (!trans.date) continue;
+      
+      const month = trans.date.substring(0, 7); // YYYY-MM
+      if (!monthlyDataMap[month]) {
+        monthlyDataMap[month] = {
+          revenue: 0,
+          cogs: 0,
+          gross_profit: 0,
+          personnel: 0,
+          marketing: 0,
+          office: 0,
+          other_opex: 0,
+        };
+      }
+
+      const accountNum = parseInt(trans.account);
+      const amount = Math.abs(trans.amount);
+
+      // Map accounts to categories (Swedish account plan)
+      if (accountNum >= 3000 && accountNum <= 3999) {
+        // Revenue accounts
+        monthlyDataMap[month].revenue += amount;
+      } else if (accountNum >= 4000 && accountNum <= 4999) {
+        // Material/goods (COGS)
+        monthlyDataMap[month].cogs += amount;
+      } else if (accountNum >= 7000 && accountNum <= 7699) {
+        // Personnel costs
+        monthlyDataMap[month].personnel += amount;
+      } else if (accountNum >= 6000 && accountNum <= 6499) {
+        // Marketing and sales
+        monthlyDataMap[month].marketing += amount;
+      } else if (accountNum >= 5000 && accountNum <= 5999) {
+        // Office and premises
+        monthlyDataMap[month].office += amount;
+      } else if (accountNum >= 6500 && accountNum <= 6999) {
+        // Other external costs
+        monthlyDataMap[month].other_opex += amount;
+      } else if (accountNum >= 7700 && accountNum <= 7999) {
+        // Depreciation and other operating expenses
+        monthlyDataMap[month].other_opex += amount;
+      }
+    }
+
+    // Calculate gross profit for each month
+    for (const month in monthlyDataMap) {
+      const data = monthlyDataMap[month];
+      data.gross_profit = data.revenue - data.cogs;
+    }
+
+    console.log(`[sie-import] Aggregated data for ${Object.keys(monthlyDataMap).length} months`);
+
+    // Insert data into database
+    let monthsImported = 0;
+    for (const [month, data] of Object.entries(monthlyDataMap)) {
+      const [year, monthNum] = month.split('-').map(Number);
+      
+      const { error: upsertError } = await supabaseClient
+        .from('fortnox_historical_data')
+        .upsert({
+          company,
+          year,
+          month: monthNum,
+          revenue: data.revenue,
+          cogs: data.cogs,
+          gross_profit: data.gross_profit,
+          personnel: data.personnel,
+          marketing: data.marketing,
+          office: data.office,
+          other_opex: data.other_opex,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'company,year,month',
+        });
+
+      if (upsertError) {
+        console.error(`Error upserting month ${month}:`, upsertError);
+      } else {
+        monthsImported++;
+      }
+    }
+
+    console.log(`[sie-import] Successfully imported ${monthsImported} months`);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        monthsImported,
+        transactionsParsed: transactions.length,
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    );
+
+  } catch (err) {
+    console.error('Error in sie-import function:', err);
+    return new Response(
+      JSON.stringify({ 
+        error: err instanceof Error ? err.message : 'Unknown error',
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      }
+    );
+  }
+});

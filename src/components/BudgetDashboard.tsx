@@ -19,7 +19,7 @@ import type { User } from "@supabase/supabase-js";
 import ipiniumLogo from "@/assets/ipinium-logo.jpg";
 import onepanLogo from "@/assets/onepan-logo.png";
 import { useSyncFortnoxData } from "@/hooks/useFortnoxData";
-import { FortnoxConnection } from "./FortnoxConnection";
+import { SieImport } from "./SieImport";
 
 type CompanyView = "ipinium" | "onepan" | "combined";
 
@@ -604,9 +604,15 @@ export const BudgetDashboard = () => {
           </TabsList>
 
           <TabsContent value={view} className="space-y-6 mt-6">
-            {/* Fortnox Connection Status */}
+            {/* SIE Import */}
             {view !== "combined" && (
-              <FortnoxConnection company={budget.company} />
+              <SieImport 
+                company={budget.company} 
+                onImportComplete={async () => {
+                  // Reload the page to fetch new data
+                  window.location.reload();
+                }}
+              />
             )}
 
             {/* Metrics */}
