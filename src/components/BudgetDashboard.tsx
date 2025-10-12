@@ -654,7 +654,7 @@ export const BudgetDashboard = () => {
             {/* Chart */}
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4 text-foreground">
-                Monthly Revenue Projection
+                Månadsintäkt prognos
               </h2>
               <BudgetChart data={budget.monthlyData} />
             </Card>

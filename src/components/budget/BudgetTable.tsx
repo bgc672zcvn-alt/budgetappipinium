@@ -93,7 +93,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
   const prevYearDepreciation = 0;
   const prevYearEbit = prevYearGrossProfit - prevYearTotalOpex - prevYearDepreciation;
   const prevYearEbitMargin = prevYearRevenue > 0 ? (prevYearEbit / prevYearRevenue) * 100 : 0;
-  const prevYearFinancial = 0;
+  const prevYearFinancial = historicalData?.reduce((sum, d) => sum + Number(d.financial_costs || 0), 0) || 0;
   const prevYearResult = prevYearEbit + prevYearFinancial;
 
   const calculateChange = (current: number, previous: number) => {
@@ -117,7 +117,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
     <Card>
       <div className="p-6 flex items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-foreground">
-          Monthly Breakdown
+          Månadsuppdelning
         </h2>
         <div className="flex items-center gap-3">
           <div className="text-sm text-muted-foreground">
@@ -139,21 +139,21 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
         <Table>
           <TableHeader>
             <TableRow className="bg-background">
-              <TableHead className="font-semibold sticky top-0 left-0 z-40 bg-background">Month</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Revenue</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">COGS</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Gross Profit</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">GM %</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Personnel</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Marketing</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Office</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Other OPEX</TableHead>
+              <TableHead className="font-semibold sticky top-0 left-0 z-40 bg-background">Månad</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Intäkt</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Varukostnad</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Bruttovinst</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">BM %</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Personal</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Marknadsföring</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Lokal</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Övrig OPEX</TableHead>
               <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Total OPEX</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">D&A</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Avskrivning</TableHead>
               <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">EBIT</TableHead>
               <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">EBIT %</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Financial</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Result</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Finansiellt</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Resultat</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody aria-live="polite">
@@ -170,7 +170,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
               const prevDepreciation = 0; // Not tracked in historical data
               const prevEbit = prevGrossProfit - prevTotalOpex - prevDepreciation;
               const prevEbitMargin = prevRevenue > 0 ? (prevEbit / prevRevenue) * 100 : 0;
-              const prevFinancial = 0; // Not tracked in historical data
+              const prevFinancial = getPreviousYearData('financial_costs')[index];
               const prevResult = prevEbit + prevFinancial;
 
               return (

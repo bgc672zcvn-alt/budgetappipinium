@@ -13,6 +13,7 @@ export interface FortnoxHistoricalData {
   marketing: number;
   office: number;
   other_opex: number;
+  financial_costs: number;
   created_at: string;
   updated_at: string;
 }

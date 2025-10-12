@@ -54,7 +54,7 @@ export const BudgetChart = ({ data }: BudgetChartProps) => {
               dataKey="revenue"
               stroke="hsl(var(--primary))"
               strokeWidth={2}
-              name="Revenue"
+              name="Intäkt"
               dot={{ fill: "hsl(var(--primary))", r: 4 }}
             />
           </LineChart>
@@ -91,7 +91,7 @@ export const BudgetChart = ({ data }: BudgetChartProps) => {
               }
             />
             <Legend />
-            <Bar dataKey="revenue" fill="hsl(var(--primary))" name="Revenue" />
+            <Bar dataKey="revenue" fill="hsl(var(--primary))" name="Intäkt" />
           </BarChart>
         </ResponsiveContainer>
       </div>

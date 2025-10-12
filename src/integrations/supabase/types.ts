@@ -106,6 +106,7 @@ export type Database = {
           cogs: number
           company: string
           created_at: string
+          financial_costs: number
           gross_profit: number
           id: string
           marketing: number
@@ -121,6 +122,7 @@ export type Database = {
           cogs?: number
           company: string
           created_at?: string
+          financial_costs?: number
           gross_profit?: number
           id?: string
           marketing?: number
@@ -136,6 +138,7 @@ export type Database = {
           cogs?: number
           company?: string
           created_at?: string
+          financial_costs?: number
           gross_profit?: number
           id?: string
           marketing?: number

@@ -19,6 +19,7 @@ interface MonthlyData {
   marketing: number;
   office: number;
   other_opex: number;
+  financial_costs: number;
 }
 
 Deno.serve(async (req) => {
@@ -133,6 +134,7 @@ Deno.serve(async (req) => {
           marketing: 0,
           office: 0,
           other_opex: 0,
+          financial_costs: 0,
         };
       }
 
@@ -159,9 +161,13 @@ Deno.serve(async (req) => {
       } else if (accountNum >= 6000 && accountNum <= 6999) {
         // Other external costs (60xx-69xx) - positive (debit) means expense
         monthlyDataMap[month].other_opex += amount;
-      } else if (accountNum >= 7700 && accountNum <= 7999) {
-        // Depreciation and financial expenses (77xx-79xx) - positive (debit) means expense
+      } else if (accountNum >= 7700 && accountNum <= 7899) {
+        // Depreciation (77xx-78xx) - positive (debit) means expense
         monthlyDataMap[month].other_opex += amount;
+      } else if (accountNum >= 8000 && accountNum <= 8999) {
+        // Financial income and expenses (80xx-89xx) - positive (debit) means expense
+        // Note: Financial income (83xx) will be negative in amount, so adding still works correctly
+        monthlyDataMap[month].financial_costs += amount;
       }
     }
 
@@ -191,6 +197,7 @@ Deno.serve(async (req) => {
           marketing: data.marketing,
           office: data.office,
           other_opex: data.other_opex,
+          financial_costs: data.financial_costs,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'company,year,month',
