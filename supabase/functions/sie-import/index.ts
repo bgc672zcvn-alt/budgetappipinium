@@ -165,9 +165,10 @@ Deno.serve(async (req) => {
         // Depreciation (77xx-78xx) - positive (debit) means expense
         monthlyDataMap[month].other_opex += amount;
       } else if (accountNum >= 8000 && accountNum <= 8999) {
-        // Financial income and expenses (80xx-89xx) - positive (debit) means expense
-        // Note: Financial income (83xx) will be negative in amount, so adding still works correctly
-        monthlyDataMap[month].financial_costs += amount;
+        // Financial income and expenses (80xx-89xx)
+        // In budget, financial costs are stored as negative numbers (subtracted from EBIT)
+        // So we negate the amount: expenses (positive debit) become negative, income (negative credit) becomes positive
+        monthlyDataMap[month].financial_costs -= amount;
       }
     }
 
