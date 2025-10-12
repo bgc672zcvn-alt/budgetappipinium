@@ -352,8 +352,8 @@ export const ipiniumBudget: BudgetData = {
   costCategories: generateIpiniumCostCategories(),
 };
 
-// OnePan Marketing Cost Categories
-const generateOnePanMarketingCategories = (): CostCategory[] => {
+// OnePan Cost Categories (Marketing, Personal, Office)
+const generateOnePanCostCategories = (): CostCategory[] => {
   const targetRevenue = 7000000;
   
   const factors = months.map((_, index) => (
@@ -386,6 +386,14 @@ const generateOnePanMarketingCategories = (): CostCategory[] => {
 
   return [
     {
+      name: "Personal",
+      accounts: [
+        { name: "Bruttolöner och förmåner", monthlyData: createMonthlyData(0.10) }, // 10% of revenue
+        { name: "Sociala avgifter", monthlyData: createMonthlyData(0.03) }, // 3% of revenue
+        { name: "Övriga personalkostnader", monthlyData: createMonthlyData(0.02) }, // 2% of revenue
+      ],
+    },
+    {
       name: "Marketing",
       accounts: [
         { name: "Meta", monthlyData: createMonthlyData(0.08) }, // 8% of revenue
@@ -393,6 +401,14 @@ const generateOnePanMarketingCategories = (): CostCategory[] => {
         { name: "Influencer Marketing", monthlyData: createMonthlyData(0.04) }, // 4% of revenue
         { name: "Content", monthlyData: createMonthlyData(0.03) }, // 3% of revenue
         { name: "Other", monthlyData: createMonthlyData(0.01) }, // 1% of revenue
+      ],
+    },
+    {
+      name: "Office",
+      accounts: [
+        { name: "Lokalkostnader", monthlyData: createMonthlyData(0.05) }, // 5% of revenue
+        { name: "IT och system", monthlyData: createMonthlyData(0.03) }, // 3% of revenue
+        { name: "Övriga externa tjänster", monthlyData: createMonthlyData(0.02) }, // 2% of revenue
       ],
     },
   ];
@@ -405,7 +421,7 @@ export const onepanBudget: BudgetData = {
   targetRevenue: 7000000,
   growthRate: "+180%",
   monthlyData: onepanMonthly,
-  costCategories: generateOnePanMarketingCategories(),
+  costCategories: generateOnePanCostCategories(),
 };
 
 export const getCombinedBudget = (): BudgetData => {

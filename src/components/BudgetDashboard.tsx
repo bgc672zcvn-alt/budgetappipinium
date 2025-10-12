@@ -400,32 +400,45 @@ export const BudgetDashboard = () => {
       const current = prev[view];
       const prevMonthly = current.monthlyData;
 
-      // Beräkna nya marketing-summor per månad baserat på uppdaterade kategorier
+      // Beräkna nya summor per månad baserat på uppdaterade kategorier
       const norm = (s: string) => s.trim().toLowerCase().slice(0, 3);
       
       const recomputed = prevMonthly.map((m) => {
         const key = norm(m.month);
         
-        // Summera alla marketing accounts för denna månad
+        // Summera alla kostnader per kategori för denna månad
+        let newPersonnel = 0;
         let newMarketing = 0;
+        let newOffice = 0;
+        
         updatedCategories?.forEach(category => {
+          const categoryName = category.name.toLowerCase();
+          
           category.accounts.forEach(account => {
             const monthData = account.monthlyData.find(d => norm(d.month) === key);
             if (monthData) {
-              newMarketing += monthData.amount;
+              if (categoryName.includes('personal')) {
+                newPersonnel += monthData.amount;
+              } else if (categoryName.includes('marketing')) {
+                newMarketing += monthData.amount;
+              } else if (categoryName.includes('office')) {
+                newOffice += monthData.amount;
+              }
             }
           });
         });
 
-        // Uppdatera totalOpex med ny marketing
-        const newTotalOpex = m.personnel + newMarketing + m.office + m.otherOpex;
+        // Uppdatera totalOpex med nya värden
+        const newTotalOpex = newPersonnel + newMarketing + newOffice + m.otherOpex;
         const newEbit = m.grossProfit - newTotalOpex - m.depreciation;
         const newEbitMargin = m.revenue > 0 ? Math.round((newEbit / m.revenue) * 1000) / 10 : 0;
         const newResultAfterFinancial = newEbit + m.financialCosts;
 
         return {
           ...m,
+          personnel: Math.round(newPersonnel),
           marketing: Math.round(newMarketing),
+          office: Math.round(newOffice),
           totalOpex: Math.round(newTotalOpex),
           ebit: Math.round(newEbit),
           ebitMargin: newEbitMargin,
