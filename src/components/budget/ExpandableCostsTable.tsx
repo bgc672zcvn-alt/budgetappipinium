@@ -30,6 +30,8 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate, company }: Expa
   const [editingAccount, setEditingAccount] = useState<string | null>(null);
   const [editingMonth, setEditingMonth] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<number>(0);
+  const [editingCategoryTotal, setEditingCategoryTotal] = useState<string | null>(null);
+  const [editCategoryTotalValue, setEditCategoryTotalValue] = useState<number>(0);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("sv-SE", {
@@ -95,6 +97,63 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate, company }: Expa
     }, 0);
   };
 
+  const startEditCategoryTotal = (categoryName: string, currentTotal: number) => {
+    setEditingCategoryTotal(categoryName);
+    setEditCategoryTotalValue(currentTotal);
+  };
+
+  const cancelEditCategoryTotal = () => {
+    setEditingCategoryTotal(null);
+  };
+
+  const saveEditCategoryTotal = () => {
+    if (!editingCategoryTotal) return;
+
+    // Fördela det nya totalbeloppet jämnt över 12 månader för varje konto
+    const category = costCategories.find(c => c.name === editingCategoryTotal);
+    if (!category) return;
+
+    const numAccounts = category.accounts.length;
+    if (numAccounts === 0) return;
+
+    // Beräkna totalt per månad (fördela nytt totalt / 12)
+    const monthlyTotal = editCategoryTotalValue / 12;
+    const monthlyPerAccount = monthlyTotal / numAccounts;
+    
+    // Använd "largest remainder" metoden för att hantera avrundningar
+    const baseAmount = Math.floor(monthlyPerAccount);
+    const remainder = Math.round(monthlyPerAccount * numAccounts) - (baseAmount * numAccounts);
+
+    const updatedCategories = costCategories.map(cat => {
+      if (cat.name !== editingCategoryTotal) return cat;
+
+      const updatedAccounts = cat.accounts.map((account, accountIdx) => {
+        const updatedMonthlyData = months.map((month, monthIdx) => {
+          let amount = baseAmount;
+          
+          // Fördela resten över de första kontona och månaderna
+          const totalCells = numAccounts * 12;
+          const cellIndex = accountIdx * 12 + monthIdx;
+          if (cellIndex < remainder) {
+            amount += 1;
+          }
+
+          return {
+            month,
+            amount,
+          };
+        });
+
+        return { ...account, monthlyData: updatedMonthlyData };
+      });
+
+      return { ...cat, accounts: updatedAccounts };
+    });
+
+    onUpdate(updatedCategories);
+    cancelEditCategoryTotal();
+  };
+
   return (
     <Card className="p-6">
       <h3 className="text-xl font-semibold mb-4">Kostnader - Detaljerad Uppdelning</h3>
@@ -143,7 +202,34 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate, company }: Expa
                     );
                   })}
                   <TableCell className="text-right">
-                    {formatCurrency(getCategoryYearTotal(category))}
+                    {editingCategoryTotal === category.name ? (
+                      <div className="flex items-center gap-1 justify-end">
+                        <Input
+                          type="number"
+                          value={editCategoryTotalValue}
+                          onChange={(e) => setEditCategoryTotalValue(Number(e.target.value))}
+                          className="w-32 h-7"
+                          autoFocus
+                        />
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveEditCategoryTotal}>
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEditCategoryTotal}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startEditCategoryTotal(category.name, getCategoryYearTotal(category));
+                        }}
+                        className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 group transition-colors ml-auto"
+                      >
+                        <span>{formatCurrency(getCategoryYearTotal(category))}</span>
+                        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                      </button>
+                    )}
                   </TableCell>
                 </TableRow>
 

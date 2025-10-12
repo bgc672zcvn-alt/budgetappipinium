@@ -9,7 +9,6 @@ import { BudgetTable } from "./budget/BudgetTable";
 import { BusinessAreasTable } from "./budget/BusinessAreasTable";
 import { ExpandableCostsTable } from "./budget/ExpandableCostsTable";
 import { VersionHistory } from "./budget/VersionHistory";
-import { TotalAdjustment } from "./budget/TotalAdjustment";
 import { NewBudgetYearDialog } from "./budget/NewBudgetYearDialog";
 import { ipiniumBudget, onepanBudget } from "@/data/budgetData";
 import { BudgetData } from "@/types/budget";
@@ -537,30 +536,6 @@ export const BudgetDashboard = () => {
     });
   }, [view, saveStateForUndo]);
 
-  // Handle total adjustment
-  const handleTotalAdjustment = useCallback((updatedBudget: BudgetData) => {
-    saveStateForUndo();
-    
-    setBudgetData(prev => {
-      const next = { ...prev, [view]: updatedBudget } as Record<CompanyView, BudgetData>;
-      const updatedIpinium = (view === "ipinium" ? updatedBudget : prev.ipinium);
-      const updatedOnepan = (view === "onepan" ? updatedBudget : prev.onepan);
-
-      // Save version
-      saveVersion(updatedBudget.company, updatedBudget, 'Total adjustment');
-
-      toast({
-        title: "Uppdaterat",
-        description: "Totaler har fördelats jämnt över 12 månader.",
-      });
-
-      return {
-        ...next,
-        combined: computeCombined(updatedIpinium, updatedOnepan),
-      };
-    });
-  }, [view, saveStateForUndo, saveVersion, toast]);
-
   // Check admin status on mount
   useEffect(() => {
     checkAdminStatus();
@@ -667,15 +642,6 @@ export const BudgetDashboard = () => {
 
             {/* Metrics */}
             <BudgetMetrics budget={budget} viewName={view === "combined" ? "Combined" : budget.company} />
-
-            {/* Total Adjustment - för Ipinium och OnePan */}
-            {view !== "combined" && (
-              <TotalAdjustment 
-                budget={budget}
-                onUpdate={handleTotalAdjustment}
-                company={budget.company}
-              />
-            )}
 
             {/* Business Areas (only for Ipinium) */}
             {budget.businessAreas && (
