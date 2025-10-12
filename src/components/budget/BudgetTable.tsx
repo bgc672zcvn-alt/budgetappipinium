@@ -94,7 +94,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
   const prevYearEbit = prevYearGrossProfit - prevYearTotalOpex - prevYearDepreciation;
   const prevYearEbitMargin = prevYearRevenue > 0 ? (prevYearEbit / prevYearRevenue) * 100 : 0;
   const prevYearFinancial = 0;
-  const prevYearResult = prevYearEbit - prevYearFinancial;
+  const prevYearResult = prevYearEbit + prevYearFinancial;
 
   const calculateChange = (current: number, previous: number) => {
     if (previous === 0) return 0;
@@ -171,7 +171,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
               const prevEbit = prevGrossProfit - prevTotalOpex - prevDepreciation;
               const prevEbitMargin = prevRevenue > 0 ? (prevEbit / prevRevenue) * 100 : 0;
               const prevFinancial = 0; // Not tracked in historical data
-              const prevResult = prevEbit - prevFinancial;
+              const prevResult = prevEbit + prevFinancial;
 
               return (
                 <React.Fragment key={month.month}>
