@@ -15,11 +15,10 @@ import { BudgetData } from "@/types/budget";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useBudgetHistory } from "@/hooks/useBudgetHistory";
-import { LogOut, Undo2, RefreshCw } from "lucide-react";
+import { LogOut, Undo2 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import ipiniumLogo from "@/assets/ipinium-logo.jpg";
 import onepanLogo from "@/assets/onepan-logo.png";
-import { useSyncFortnoxData } from "@/hooks/useFortnoxData";
 import { SieImport } from "./SieImport";
 
 type CompanyView = "ipinium" | "onepan" | "combined";
@@ -130,8 +129,6 @@ export const BudgetDashboard = () => {
   });
   const [previousState, setPreviousState] = useState<Record<CompanyView, BudgetData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const { syncData } = useSyncFortnoxData();
 
   const budget = budgetData[view];
 
@@ -586,27 +583,6 @@ export const BudgetDashboard = () => {
                     });
                   }}
                 />
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={async () => {
-                    try {
-                      setIsSyncing(true);
-                      const year = new Date().getFullYear();
-                      await syncData(budget.company, year);
-                      toast({ title: "Synkat", description: `Fortnox-data synkad för ${budget.company} (${year}).` });
-                    } catch (e) {
-                      console.error(e);
-                      toast({ title: "Fel", description: "Kunde inte synka Fortnox.", variant: "destructive" });
-                    } finally {
-                      setIsSyncing(false);
-                    }
-                  }}
-                  disabled={isSyncing}
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  {isSyncing ? 'Synkar…' : 'Synka Fortnox'}
-                </Button>
               <Button 
                 variant="outline" 
                 size="sm" 
