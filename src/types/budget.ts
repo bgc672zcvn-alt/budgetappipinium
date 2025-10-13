@@ -1,3 +1,14 @@
+export interface RevenueAccountMonthly {
+  month: string;
+  amount: number;
+}
+
+export interface RevenueAccount {
+  accountNumber: string;
+  name: string;
+  monthlyData: RevenueAccountMonthly[];
+}
+
 export interface BusinessAreaMonthly {
   month: string;
   revenue: number;
@@ -8,6 +19,7 @@ export interface BusinessAreaMonthly {
 export interface BusinessArea {
   name: string;
   monthlyData: BusinessAreaMonthly[];
+  accounts?: RevenueAccount[]; // Detailed revenue accounts
 }
 
 export interface AccountMonthly {
@@ -16,6 +28,7 @@ export interface AccountMonthly {
 }
 
 export interface Account {
+  accountNumber?: string;
   name: string;
   monthlyData: AccountMonthly[];
 }

@@ -661,6 +661,7 @@ export const BudgetDashboard = () => {
               <BusinessAreasTable
                 businessAreas={budget.businessAreas}
                 onUpdate={handleBusinessAreasUpdate}
+                company={budget.company}
               />
             )}
 

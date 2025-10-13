@@ -1,4 +1,4 @@
-import { BudgetData, MonthlyData, BusinessArea, BusinessAreaMonthly, CostCategory, Account, AccountMonthly } from "@/types/budget";
+import { BudgetData, MonthlyData, BusinessArea, BusinessAreaMonthly, CostCategory, Account, AccountMonthly, RevenueAccount, RevenueAccountMonthly } from "@/types/budget";
 
 const months = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -227,25 +227,89 @@ const generateOnepanMonthly = (): MonthlyData[] => {
 
 // Ipinium Business Areas - Growth focused on Tina products
 const generateIpiniumBusinessAreas = (monthlyData: MonthlyData[]): BusinessArea[] => {
-  type AreaDef = { name: string; share: number; margin: number };
+  type AreaDef = { name: string; share: number; margin: number; accounts: { number: string; name: string; share: number }[] };
   const areas: AreaDef[] = [
     // Tina-produkter först
-    { name: "Tina Land", share: 0.15, margin: 26.8 },
-    { name: "Tina Marin", share: 0.32, margin: 29.9 },
-    { name: "Reservdelar Tina", share: 0.32, margin: 45.4 },
+    { 
+      name: "Tina Land", 
+      share: 0.15, 
+      margin: 26.8,
+      accounts: [
+        { number: "3010", name: "Tina Land Försäljning", share: 1.0 }
+      ]
+    },
+    { 
+      name: "Tina Marin", 
+      share: 0.32, 
+      margin: 29.9,
+      accounts: [
+        { number: "3020", name: "Tina Marin Försäljning", share: 1.0 }
+      ]
+    },
+    { 
+      name: "Reservdelar Tina", 
+      share: 0.32, 
+      margin: 45.4,
+      accounts: [
+        { number: "3030", name: "Reservdelar Försäljning", share: 1.0 }
+      ]
+    },
     
     // Plåtprodukter
-    { name: "Plåtar", share: 0.09, margin: 44.4 },
-    { name: "RC plåtar", share: 0.02, margin: 48.1 },
+    { 
+      name: "Plåtar", 
+      share: 0.09, 
+      margin: 44.4,
+      accounts: [
+        { number: "3040", name: "Plåtar Försäljning", share: 1.0 }
+      ]
+    },
+    { 
+      name: "RC plåtar", 
+      share: 0.02, 
+      margin: 48.1,
+      accounts: [
+        { number: "3041", name: "RC Plåtar Försäljning", share: 1.0 }
+      ]
+    },
     
     // Övriga i alfabetisk ordning
-    { name: "Färsmaskiner", share: 0.03, margin: 67.5 },
-    { name: "Kyla och värme", share: 0.07, margin: 43.6 },
-    { name: "Ångstäd", share: 0.00, margin: 0 },
+    { 
+      name: "Färsmaskiner", 
+      share: 0.03, 
+      margin: 67.5,
+      accounts: [
+        { number: "3050", name: "Färsmaskiner Försäljning", share: 1.0 }
+      ]
+    },
+    { 
+      name: "Kyla och värme", 
+      share: 0.07, 
+      margin: 43.6,
+      accounts: [
+        { number: "3060", name: "Kyla och värme Försäljning", share: 1.0 }
+      ]
+    },
+    { 
+      name: "Ångstäd", 
+      share: 0.00, 
+      margin: 0,
+      accounts: [
+        { number: "3070", name: "Ångstäd Försäljning", share: 1.0 }
+      ]
+    },
   ];
 
   // Förbered resultatstrukturen
-  const result: BusinessArea[] = areas.map((a) => ({ name: a.name, monthlyData: [] as BusinessAreaMonthly[] }));
+  const result: BusinessArea[] = areas.map((a) => ({ 
+    name: a.name, 
+    monthlyData: [] as BusinessAreaMonthly[],
+    accounts: a.accounts.map(acc => ({
+      accountNumber: acc.number,
+      name: acc.name,
+      monthlyData: [] as RevenueAccountMonthly[]
+    }))
+  }));
 
   // För varje månad: fördela totalintäkten exakt med "largest remainder"-metoden
   months.forEach((month, idx) => {
@@ -278,6 +342,18 @@ const generateIpiniumBusinessAreas = (monthlyData: MonthlyData[]): BusinessArea[
         contributionMargin: margin,
         grossProfit,
       });
+
+      // Fördela intäkten till konton
+      if (result[i].accounts) {
+        const areaAccounts = areas[i].accounts;
+        areaAccounts.forEach((acc, accIdx) => {
+          const amount = Math.round(revenue * acc.share);
+          result[i].accounts![accIdx].monthlyData.push({
+            month,
+            amount
+          });
+        });
+      }
     }
   });
 
@@ -315,27 +391,27 @@ const generateIpiniumCostCategories = (): CostCategory[] => {
     {
       name: "Personal",
       accounts: [
-        { name: "Bruttolöner och förmåner", monthlyData: createMonthlyData(0.10) },
-        { name: "Sociala avgifter", monthlyData: createMonthlyData(0.05) },
-        { name: "Pensionskostnader", monthlyData: createMonthlyData(0.03) },
-        { name: "Övriga personalkostnader", monthlyData: createMonthlyData(0.01) },
+        { accountNumber: "7010", name: "Bruttolöner och förmåner", monthlyData: createMonthlyData(0.10) },
+        { accountNumber: "7210", name: "Sociala avgifter", monthlyData: createMonthlyData(0.05) },
+        { accountNumber: "7220", name: "Pensionskostnader", monthlyData: createMonthlyData(0.03) },
+        { accountNumber: "7290", name: "Övriga personalkostnader", monthlyData: createMonthlyData(0.01) },
       ],
     },
     {
       name: "Marketing",
       accounts: [
-        { name: "Reklam och PR", monthlyData: createMonthlyData(0.03) },
-        { name: "Övriga försäljningskostnader", monthlyData: createMonthlyData(0.02) },
+        { accountNumber: "5910", name: "Reklam och PR", monthlyData: createMonthlyData(0.03) },
+        { accountNumber: "5990", name: "Övriga försäljningskostnader", monthlyData: createMonthlyData(0.02) },
       ],
     },
     {
       name: "Office",
       accounts: [
-        { name: "Lokalkostnader", monthlyData: createMonthlyData(0.06) },
-        { name: "Tele och post", monthlyData: createMonthlyData(0.02) },
-        { name: "Förbrukningsinventarier", monthlyData: createMonthlyData(0.02) },
-        { name: "Företagsförsäkringar", monthlyData: createMonthlyData(0.02) },
-        { name: "Övriga externa tjänster", monthlyData: createMonthlyData(0.02) },
+        { accountNumber: "5010", name: "Lokalkostnader", monthlyData: createMonthlyData(0.06) },
+        { accountNumber: "6210", name: "Tele och post", monthlyData: createMonthlyData(0.02) },
+        { accountNumber: "5410", name: "Förbrukningsinventarier", monthlyData: createMonthlyData(0.02) },
+        { accountNumber: "6310", name: "Företagsförsäkringar", monthlyData: createMonthlyData(0.02) },
+        { accountNumber: "6990", name: "Övriga externa tjänster", monthlyData: createMonthlyData(0.02) },
       ],
     },
   ];
@@ -388,27 +464,27 @@ const generateOnePanCostCategories = (): CostCategory[] => {
     {
       name: "Personal",
       accounts: [
-        { name: "Bruttolöner och förmåner", monthlyData: createMonthlyData(0.10) }, // 10% of revenue
-        { name: "Sociala avgifter", monthlyData: createMonthlyData(0.03) }, // 3% of revenue
-        { name: "Övriga personalkostnader", monthlyData: createMonthlyData(0.02) }, // 2% of revenue
+        { accountNumber: "7010", name: "Bruttolöner och förmåner", monthlyData: createMonthlyData(0.10) }, // 10% of revenue
+        { accountNumber: "7210", name: "Sociala avgifter", monthlyData: createMonthlyData(0.03) }, // 3% of revenue
+        { accountNumber: "7290", name: "Övriga personalkostnader", monthlyData: createMonthlyData(0.02) }, // 2% of revenue
       ],
     },
     {
       name: "Marketing",
       accounts: [
-        { name: "Meta", monthlyData: createMonthlyData(0.08) }, // 8% of revenue
-        { name: "Google", monthlyData: createMonthlyData(0.06) }, // 6% of revenue
-        { name: "Influencer Marketing", monthlyData: createMonthlyData(0.04) }, // 4% of revenue
-        { name: "Content", monthlyData: createMonthlyData(0.03) }, // 3% of revenue
-        { name: "Other", monthlyData: createMonthlyData(0.01) }, // 1% of revenue
+        { accountNumber: "5911", name: "Meta", monthlyData: createMonthlyData(0.08) }, // 8% of revenue
+        { accountNumber: "5912", name: "Google", monthlyData: createMonthlyData(0.06) }, // 6% of revenue
+        { accountNumber: "5913", name: "Influencer Marketing", monthlyData: createMonthlyData(0.04) }, // 4% of revenue
+        { accountNumber: "5914", name: "Content", monthlyData: createMonthlyData(0.03) }, // 3% of revenue
+        { accountNumber: "5990", name: "Other", monthlyData: createMonthlyData(0.01) }, // 1% of revenue
       ],
     },
     {
       name: "Office",
       accounts: [
-        { name: "Lokalkostnader", monthlyData: createMonthlyData(0.05) }, // 5% of revenue
-        { name: "IT och system", monthlyData: createMonthlyData(0.03) }, // 3% of revenue
-        { name: "Övriga externa tjänster", monthlyData: createMonthlyData(0.02) }, // 2% of revenue
+        { accountNumber: "5010", name: "Lokalkostnader", monthlyData: createMonthlyData(0.05) }, // 5% of revenue
+        { accountNumber: "6230", name: "IT och system", monthlyData: createMonthlyData(0.03) }, // 3% of revenue
+        { accountNumber: "6990", name: "Övriga externa tjänster", monthlyData: createMonthlyData(0.02) }, // 2% of revenue
       ],
     },
   ];

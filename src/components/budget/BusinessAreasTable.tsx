@@ -10,13 +10,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { BusinessArea } from "@/types/budget";
-import { Edit2, Check, X } from "lucide-react";
+import { BusinessArea, RevenueAccount } from "@/types/budget";
+import { Edit2, Check, X, ChevronDown, ChevronRight } from "lucide-react";
 import { CommentButton } from "@/components/comments/CommentButton";
 
 interface BusinessAreasTableProps {
   businessAreas: BusinessArea[];
   onUpdate: (updatedAreas: BusinessArea[]) => void;
+  company: string;
 }
 
 const months = [
@@ -24,11 +25,13 @@ const months = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ];
 
-export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTableProps) => {
+export const BusinessAreasTable = ({ businessAreas, onUpdate, company }: BusinessAreasTableProps) => {
+  const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
   const [editingArea, setEditingArea] = useState<string | null>(null);
   const [editingMonth, setEditingMonth] = useState<string | null>(null);
+  const [editingAccount, setEditingAccount] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<number>(0);
-  const [editType, setEditType] = useState<'revenue' | 'margin' | 'yearlyMargin'>('revenue');
+  const [editType, setEditType] = useState<'revenue' | 'margin' | 'yearlyMargin' | 'account'>('revenue');
   const [editingYearlyMargin, setEditingYearlyMargin] = useState<string | null>(null);
   const [editingYearlyRevenue, setEditingYearlyRevenue] = useState<string | null>(null);
 
@@ -40,40 +43,99 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
     }).format(value);
   };
 
+  const toggleArea = (areaName: string) => {
+    setExpandedAreas((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(areaName)) {
+        newSet.delete(areaName);
+      } else {
+        newSet.add(areaName);
+      }
+      return newSet;
+    });
+  };
+
   const startEdit = (areaName: string, month: string, type: 'revenue' | 'margin', currentValue: number) => {
     setEditingArea(areaName);
     setEditingMonth(month);
     setEditType(type);
+    setEditValue(currentValue);
+    setEditingAccount(null);
+  };
+
+  const startEditAccount = (areaName: string, accountNumber: string, month: string, currentValue: number) => {
+    setEditingArea(areaName);
+    setEditingAccount(accountNumber);
+    setEditingMonth(month);
+    setEditType('account');
     setEditValue(currentValue);
   };
 
   const cancelEdit = () => {
     setEditingArea(null);
     setEditingMonth(null);
+    setEditingAccount(null);
   };
 
   const saveEdit = () => {
     if (!editingArea || !editingMonth) return;
 
-    const updatedAreas = businessAreas.map(area => {
-      if (area.name !== editingArea) return area;
+    if (editType === 'account' && editingAccount) {
+      // Update account level
+      const updatedAreas = businessAreas.map(area => {
+        if (area.name !== editingArea || !area.accounts) return area;
 
-      const updatedMonthlyData = area.monthlyData.map(data => {
-        if (data.month !== editingMonth) return data;
+        const updatedAccounts = area.accounts.map(account => {
+          if (account.accountNumber !== editingAccount) return account;
 
-        if (editType === 'revenue') {
-          const grossProfit = editValue * (data.contributionMargin / 100);
-          return { ...data, revenue: editValue, grossProfit };
-        } else {
-          const grossProfit = data.revenue * (editValue / 100);
-          return { ...data, contributionMargin: editValue, grossProfit };
-        }
+          const updatedMonthlyData = account.monthlyData.map(data => {
+            if (data.month !== editingMonth) return data;
+            return { ...data, amount: editValue };
+          });
+
+          return { ...account, monthlyData: updatedMonthlyData };
+        });
+
+        // Recalculate area totals
+        const updatedMonthlyData = area.monthlyData.map(data => {
+          if (data.month !== editingMonth) return data;
+
+          const newRevenue = updatedAccounts.reduce((sum, acc) => {
+            const monthData = acc.monthlyData.find(d => d.month === editingMonth);
+            return sum + (monthData?.amount || 0);
+          }, 0);
+
+          const grossProfit = newRevenue * (data.contributionMargin / 100);
+          return { ...data, revenue: newRevenue, grossProfit };
+        });
+
+        return { ...area, accounts: updatedAccounts, monthlyData: updatedMonthlyData };
       });
 
-      return { ...area, monthlyData: updatedMonthlyData };
-    });
+      onUpdate(updatedAreas);
+    } else {
+      // Update area level
+      const updatedAreas = businessAreas.map(area => {
+        if (area.name !== editingArea) return area;
 
-    onUpdate(updatedAreas);
+        const updatedMonthlyData = area.monthlyData.map(data => {
+          if (data.month !== editingMonth) return data;
+
+          if (editType === 'revenue') {
+            const grossProfit = editValue * (data.contributionMargin / 100);
+            return { ...data, revenue: editValue, grossProfit };
+          } else {
+            const grossProfit = data.revenue * (editValue / 100);
+            return { ...data, contributionMargin: editValue, grossProfit };
+          }
+        });
+
+        return { ...area, monthlyData: updatedMonthlyData };
+      });
+
+      onUpdate(updatedAreas);
+    }
+    
     cancelEdit();
   };
 
@@ -83,7 +145,6 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
     const updatedAreas = businessAreas.map(area => {
       if (area.name !== editingYearlyMargin) return area;
 
-      // Apply new margin to all months
       const updatedMonthlyData = area.monthlyData.map(data => {
         const grossProfit = data.revenue * (editValue / 100);
         return { ...data, contributionMargin: editValue, grossProfit };
@@ -102,132 +163,106 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
     const updatedAreas = businessAreas.map(area => {
       if (area.name !== editingYearlyRevenue) return area;
 
-      // Distribute total evenly across all 12 months
-      const monthlyRevenue = editValue / 12;
-      const updatedMonthlyData = area.monthlyData.map(data => {
+      // Distribute total evenly across all 12 months using largest remainder method
+      const totalAmount = editValue;
+      const baseAmount = Math.floor(totalAmount / 12);
+      const remainder = totalAmount - (baseAmount * 12);
+
+      const monthlyRevenues = months.map((_, index) => 
+        baseAmount + (index < remainder ? 1 : 0)
+      );
+
+      const updatedMonthlyData = area.monthlyData.map((data, index) => {
+        const monthlyRevenue = monthlyRevenues[index];
         const grossProfit = monthlyRevenue * (data.contributionMargin / 100);
         return { ...data, revenue: monthlyRevenue, grossProfit };
       });
 
-      return { ...area, monthlyData: updatedMonthlyData };
+      // Also update accounts if they exist
+      let updatedAccounts = area.accounts;
+      if (area.accounts && area.accounts.length > 0) {
+        updatedAccounts = area.accounts.map(account => {
+          const updatedAccountMonthly = account.monthlyData.map((data, index) => {
+            const monthlyRevenue = monthlyRevenues[index];
+            // Distribute proportionally to accounts (for now, evenly if single account)
+            const amount = area.accounts!.length === 1 
+              ? monthlyRevenue 
+              : Math.round(monthlyRevenue / area.accounts!.length);
+            return { ...data, amount };
+          });
+          return { ...account, monthlyData: updatedAccountMonthly };
+        });
+      }
+
+      return { ...area, monthlyData: updatedMonthlyData, accounts: updatedAccounts };
     });
 
     onUpdate(updatedAreas);
     setEditingYearlyRevenue(null);
   };
 
-  const getTotals = (month: string) => {
-    const totalRevenue = businessAreas.reduce((sum, area) => {
-      const monthData = area.monthlyData.find(d => d.month === month);
-      return sum + (monthData?.revenue || 0);
-    }, 0);
-
-    const totalGrossProfit = businessAreas.reduce((sum, area) => {
-      const monthData = area.monthlyData.find(d => d.month === month);
-      return sum + (monthData?.grossProfit || 0);
-    }, 0);
-
-    const avgMargin = totalRevenue > 0 ? (totalGrossProfit / totalRevenue) * 100 : 0;
-
-    return { totalRevenue, totalGrossProfit, avgMargin };
+  const getAccountTotal = (account: RevenueAccount) => {
+    return account.monthlyData.reduce((sum, d) => sum + d.amount, 0);
   };
 
-  const getGroupedTotals = (groupName: string, month: string) => {
-    const filteredAreas = businessAreas.filter(area => {
-      if (groupName === "Tina") {
-        return area.name.toLowerCase().includes("tina");
-      } else if (groupName === "Plåt") {
-        return area.name.toLowerCase().includes("plåt");
-      } else {
-        // Övriga = not Tina and not Plåt
-        return !area.name.toLowerCase().includes("tina") && !area.name.toLowerCase().includes("plåt");
-      }
-    });
-
-    const totalRevenue = filteredAreas.reduce((sum, area) => {
-      const monthData = area.monthlyData.find(d => d.month === month);
-      return sum + (monthData?.revenue || 0);
-    }, 0);
-
-    const totalGrossProfit = filteredAreas.reduce((sum, area) => {
-      const monthData = area.monthlyData.find(d => d.month === month);
-      return sum + (monthData?.grossProfit || 0);
-    }, 0);
-
-    const avgMargin = totalRevenue > 0 ? (totalGrossProfit / totalRevenue) * 100 : 0;
-
-    return { totalRevenue, totalGrossProfit, avgMargin, count: filteredAreas.length };
-  };
-
-  const getGroupYearTotal = (groupName: string) => {
-    const filteredAreas = businessAreas.filter(area => {
-      if (groupName === "Tina") {
-        return area.name.toLowerCase().includes("tina");
-      } else if (groupName === "Plåt") {
-        return area.name.toLowerCase().includes("plåt");
-      } else {
-        return !area.name.toLowerCase().includes("tina") && !area.name.toLowerCase().includes("plåt");
-      }
-    });
-
-    const totalRevenue = filteredAreas.reduce((sum, area) =>
-      sum + area.monthlyData.reduce((s, d) => s + d.revenue, 0), 0
-    );
-
-    const totalGrossProfit = filteredAreas.reduce((sum, area) =>
-      sum + area.monthlyData.reduce((s, d) => s + d.grossProfit, 0), 0
-    );
-
-    const avgMargin = totalRevenue > 0 ? (totalGrossProfit / totalRevenue) * 100 : 0;
-
-    return { totalRevenue, totalGrossProfit, avgMargin };
+  const getAreaYearTotal = (area: BusinessArea) => {
+    return area.monthlyData.reduce((sum, d) => sum + d.revenue, 0);
   };
 
   return (
     <Card className="p-6">
       <h3 className="text-xl font-semibold mb-4">Affärsområden - Detaljerad Budget</h3>
       <p className="text-sm text-muted-foreground mb-4">
-        Klicka på intäkt eller BV% för att redigera värden. Bruttovinst räknas automatiskt ut.
+        Klicka på pilen för att expandera till kontonivå. Klicka på värden för att redigera.
       </p>
 
-      <div className="relative">
+      <div className="relative overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-background">
-              <TableHead className="w-[200px] sticky top-0 left-0 bg-background z-40">Affärsområde</TableHead>
-              <TableHead className="w-[120px] sticky top-0 z-30 bg-background">Typ</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="w-[250px]">Område/Konto</TableHead>
+              <TableHead className="w-[100px]">Typ</TableHead>
+              {months.map((month) => (
+                <TableHead key={month} className="text-right min-w-[120px]">
+                  {month}
+                </TableHead>
+              ))}
+              <TableHead className="text-right min-w-[140px]">Totalt</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {businessAreas.map((area) => (
               <Fragment key={area.name}>
-                {/* Area Sticky Month Header */}
-                <TableRow className="bg-card">
-                  <TableCell className="sticky top-0 left-0 z-30 bg-card" colSpan={2}>
-                    &nbsp;
+                {/* Area Revenue Row */}
+                <TableRow className="font-medium hover:bg-muted/50">
+                  <TableCell rowSpan={3}>
+                    {area.accounts && area.accounts.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleArea(area.name)}
+                        className="h-6 w-6 p-0"
+                      >
+                        {expandedAreas.has(area.name) ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
                   </TableCell>
-                  {months.map((m) => (
-                    <TableCell key={m} className="text-right min-w-[120px] sticky top-0 z-20 bg-card">
-                      {m}
-                    </TableCell>
-                  ))}
-                  <TableCell className="text-right min-w-[120px] sticky top-0 z-20 bg-card">Totalt</TableCell>
-                </TableRow>
-                {/* Revenue Row */}
-                <TableRow key={`${area.name}-revenue`}>
-                  <TableCell className="font-medium sticky left-0 bg-background z-30" rowSpan={3}>
-                    {area.name}
-                  </TableCell>
+                  <TableCell className="font-semibold">{area.name}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">Intäkt</TableCell>
                   {area.monthlyData.map((data) => (
                     <TableCell key={data.month} className="text-right">
-                      {editingArea === area.name && editingMonth === data.month && editType === 'revenue' ? (
-                        <div className="flex items-center gap-1">
+                      {editingArea === area.name && editingMonth === data.month && editType === 'revenue' && !editingAccount ? (
+                        <div className="flex items-center gap-1 justify-end">
                           <Input
                             type="number"
                             value={editValue}
                             onChange={(e) => setEditValue(Number(e.target.value))}
-                            className="w-24 h-7"
+                            className="w-28 h-7"
                             autoFocus
                           />
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveEdit}>
@@ -247,7 +282,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                             <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                           </button>
                           <CommentButton
-                            company="Ipinium AB"
+                            company={company}
                             field={`businessArea_${area.name}_revenue`}
                             month={data.month}
                             value={data.revenue}
@@ -263,7 +298,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                           type="number"
                           value={editValue}
                           onChange={(e) => setEditValue(Number(e.target.value))}
-                          className="w-28 h-7"
+                          className="w-32 h-7"
                           autoFocus
                         />
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveYearlyRevenueEdit}>
@@ -277,24 +312,25 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                       <button
                         onClick={() => {
                           setEditingYearlyRevenue(area.name);
-                          setEditValue(area.monthlyData.reduce((sum, d) => sum + d.revenue, 0));
+                          setEditValue(getAreaYearTotal(area));
                         }}
                         className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 ml-auto group transition-colors"
                       >
-                        <span>{formatCurrency(area.monthlyData.reduce((sum, d) => sum + d.revenue, 0))}</span>
+                        <span>{formatCurrency(getAreaYearTotal(area))}</span>
                         <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                       </button>
                     )}
                   </TableCell>
                 </TableRow>
 
-                {/* Contribution Margin Row */}
-                <TableRow key={`${area.name}-margin`}>
+                {/* Area Margin Row */}
+                <TableRow className="hover:bg-muted/50">
+                  <TableCell className="font-semibold"></TableCell>
                   <TableCell className="text-sm text-muted-foreground">BV%</TableCell>
                   {area.monthlyData.map((data) => (
                     <TableCell key={data.month} className="text-right">
                       {editingArea === area.name && editingMonth === data.month && editType === 'margin' ? (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 justify-end">
                           <Input
                             type="number"
                             value={editValue}
@@ -359,8 +395,9 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                   </TableCell>
                 </TableRow>
 
-                {/* Gross Profit Row */}
-                <TableRow key={`${area.name}-profit`} className="border-b-2">
+                {/* Area Gross Profit Row */}
+                <TableRow className="border-b-2 hover:bg-muted/50">
+                  <TableCell className="font-semibold"></TableCell>
                   <TableCell className="text-sm text-muted-foreground">Bruttovinst</TableCell>
                   {area.monthlyData.map((data) => (
                     <TableCell key={data.month} className="text-right text-success">
@@ -371,287 +408,59 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate }: BusinessAreasTab
                     {formatCurrency(area.monthlyData.reduce((sum, d) => sum + d.grossProfit, 0))}
                   </TableCell>
                 </TableRow>
+
+                {/* Account Detail Rows */}
+                {expandedAreas.has(area.name) && area.accounts && area.accounts.map((account) => (
+                  <TableRow key={`${area.name}-${account.accountNumber}`} className="bg-muted/30">
+                    <TableCell></TableCell>
+                    <TableCell className="pl-8 text-sm">
+                      <span className="text-muted-foreground">{account.accountNumber}</span> - {account.name}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">Konto</TableCell>
+                    {account.monthlyData.map((data) => (
+                      <TableCell key={data.month} className="text-right">
+                        {editingArea === area.name && editingAccount === account.accountNumber && editingMonth === data.month ? (
+                          <div className="flex items-center gap-1 justify-end">
+                            <Input
+                              type="number"
+                              value={editValue}
+                              onChange={(e) => setEditValue(Number(e.target.value))}
+                              className="w-28 h-7"
+                              autoFocus
+                            />
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveEdit}>
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEdit}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 justify-end">
+                            <button
+                              onClick={() => startEditAccount(area.name, account.accountNumber!, data.month, data.amount)}
+                              className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 group transition-colors text-sm"
+                            >
+                              <span>{formatCurrency(data.amount)}</span>
+                              <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                            </button>
+                            <CommentButton
+                              company={company}
+                              field={`account_${account.accountNumber}_${account.name}`}
+                              month={data.month}
+                              value={data.amount}
+                            />
+                          </div>
+                        )}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(getAccountTotal(account))}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </Fragment>
             ))}
-
-            {/* TOTALT Sticky Month Header */}
-            <TableRow className="bg-card">
-              <TableCell className="sticky top-0 left-0 z-30 bg-card" colSpan={2}>
-                &nbsp;
-              </TableCell>
-              {months.map((m) => (
-                <TableCell key={m} className="text-right min-w-[120px] sticky top-0 z-20 bg-card">
-                  {m}
-                </TableCell>
-              ))}
-              <TableCell className="text-right min-w-[120px] sticky top-0 z-20 bg-card">Totalt</TableCell>
-            </TableRow>
-
-            {/* Totals Row */}
-            <TableRow className="bg-muted font-semibold">
-              <TableCell className="sticky left-0 bg-muted z-20">TOTALT</TableCell>
-              <TableCell>Intäkt</TableCell>
-              {months.map((month) => {
-                const { totalRevenue } = getTotals(month);
-                return (
-                  <TableCell key={month} className="text-right">
-                    {formatCurrency(totalRevenue)}
-                  </TableCell>
-                );
-              })}
-              <TableCell className="text-right">
-                {formatCurrency(
-                  businessAreas.reduce((sum, area) =>
-                    sum + area.monthlyData.reduce((s, d) => s + d.revenue, 0), 0
-                  )
-                )}
-              </TableCell>
-            </TableRow>
-            <TableRow className="bg-muted font-semibold">
-              <TableCell className="sticky left-0 bg-muted z-20"></TableCell>
-              <TableCell>Snitt BV%</TableCell>
-              {months.map((month) => {
-                const { avgMargin } = getTotals(month);
-                return (
-                  <TableCell key={month} className="text-right">
-                    {avgMargin.toFixed(1)}%
-                  </TableCell>
-                );
-              })}
-              <TableCell className="text-right">
-                {(
-                  businessAreas.reduce((sum, area) =>
-                    sum + area.monthlyData.reduce((s, d) => s + d.grossProfit, 0), 0
-                  ) /
-                  businessAreas.reduce((sum, area) =>
-                    sum + area.monthlyData.reduce((s, d) => s + d.revenue, 0), 0
-                  ) * 100
-                ).toFixed(1)}%
-              </TableCell>
-            </TableRow>
-            <TableRow className="bg-muted font-semibold border-b-2">
-              <TableCell className="sticky left-0 bg-muted z-20"></TableCell>
-              <TableCell>Bruttovinst</TableCell>
-              {months.map((month) => {
-                const { totalGrossProfit } = getTotals(month);
-                return (
-                  <TableCell key={month} className="text-right text-success">
-                    {formatCurrency(totalGrossProfit)}
-                  </TableCell>
-                );
-              })}
-              <TableCell className="text-right text-success">
-                {formatCurrency(
-                  businessAreas.reduce((sum, area) =>
-                    sum + area.monthlyData.reduce((s, d) => s + d.grossProfit, 0), 0
-                  )
-                )}
-              </TableCell>
-            </TableRow>
-
-            {/* Grouped Summaries */}
-            <TableRow className="h-4 bg-background">
-              <TableCell colSpan={14} className="p-0"></TableCell>
-            </TableRow>
-
-            {/* Tina Group Summary */}
-            {getGroupedTotals("Tina", "Jan").count > 0 && (
-              <>
-                {/* Tina Sticky Month Header */}
-                <TableRow className="bg-card">
-                  <TableCell className="sticky top-0 left-0 z-30 bg-card" colSpan={2}>
-                    &nbsp;
-                  </TableCell>
-                  {months.map((m) => (
-                    <TableCell key={m} className="text-right min-w-[120px] sticky top-0 z-20 bg-card">
-                      {m}
-                    </TableCell>
-                  ))}
-                  <TableCell className="text-right min-w-[120px] sticky top-0 z-20 bg-card">Totalt</TableCell>
-                </TableRow>
-                <TableRow className="bg-card font-semibold">
-                  <TableCell className="sticky left-0 z-30 bg-card">
-                    Tina-produkter (sammanställning)
-                  </TableCell>
-                  <TableCell>Intäkt</TableCell>
-                  {months.map((month) => {
-                    const { totalRevenue } = getGroupedTotals("Tina", month);
-                    return (
-                      <TableCell key={month} className="text-right">
-                        {formatCurrency(totalRevenue)}
-                      </TableCell>
-                    );
-                  })}
-                  <TableCell className="text-right">
-                    {formatCurrency(getGroupYearTotal("Tina").totalRevenue)}
-                  </TableCell>
-                </TableRow>
-                <TableRow className="bg-card font-semibold">
-                  <TableCell className="sticky left-0 z-30 bg-card"></TableCell>
-                  <TableCell>BV%</TableCell>
-                  {months.map((month) => {
-                    const { avgMargin } = getGroupedTotals("Tina", month);
-                    return (
-                      <TableCell key={month} className="text-right">
-                        {avgMargin.toFixed(1)}%
-                      </TableCell>
-                    );
-                  })}
-                  <TableCell className="text-right">
-                    {getGroupYearTotal("Tina").avgMargin.toFixed(1)}%
-                  </TableCell>
-                </TableRow>
-                <TableRow className="bg-card font-semibold border-b-2">
-                  <TableCell className="sticky left-0 z-30 bg-card"></TableCell>
-                  <TableCell>Bruttovinst</TableCell>
-                  {months.map((month) => {
-                    const { totalGrossProfit } = getGroupedTotals("Tina", month);
-                    return (
-                      <TableCell key={month} className="text-right text-success">
-                        {formatCurrency(totalGrossProfit)}
-                      </TableCell>
-                    );
-                  })}
-                  <TableCell className="text-right text-success">
-                    {formatCurrency(getGroupYearTotal("Tina").totalGrossProfit)}
-                  </TableCell>
-                </TableRow>
-              </>
-            )}
-
-            {/* Plåt Group Summary */}
-            {getGroupedTotals("Plåt", "Jan").count > 0 && (
-              <>
-                {/* Plåt Sticky Month Header */}
-                <TableRow className="bg-card">
-                  <TableCell className="sticky top-0 left-0 z-30 bg-card" colSpan={2}>
-                    &nbsp;
-                  </TableCell>
-                  {months.map((m) => (
-                    <TableCell key={m} className="text-right min-w-[120px] sticky top-0 z-20 bg-card">
-                      {m}
-                    </TableCell>
-                  ))}
-                  <TableCell className="text-right min-w-[120px] sticky top-0 z-20 bg-card">Totalt</TableCell>
-                </TableRow>
-                <TableRow className="bg-card font-semibold">
-                  <TableCell className="sticky left-0 z-30 bg-card">
-                    Plåtprodukter (sammanställning)
-                  </TableCell>
-                  <TableCell>Intäkt</TableCell>
-                  {months.map((month) => {
-                    const { totalRevenue } = getGroupedTotals("Plåt", month);
-                    return (
-                      <TableCell key={month} className="text-right">
-                        {formatCurrency(totalRevenue)}
-                      </TableCell>
-                    );
-                  })}
-                  <TableCell className="text-right">
-                    {formatCurrency(getGroupYearTotal("Plåt").totalRevenue)}
-                  </TableCell>
-                </TableRow>
-                <TableRow className="bg-card font-semibold">
-                  <TableCell className="sticky left-0 z-30 bg-card"></TableCell>
-                  <TableCell>BV%</TableCell>
-                  {months.map((month) => {
-                    const { avgMargin } = getGroupedTotals("Plåt", month);
-                    return (
-                      <TableCell key={month} className="text-right">
-                        {avgMargin.toFixed(1)}%
-                      </TableCell>
-                    );
-                  })}
-                  <TableCell className="text-right">
-                    {getGroupYearTotal("Plåt").avgMargin.toFixed(1)}%
-                  </TableCell>
-                </TableRow>
-                <TableRow className="bg-card font-semibold border-b-2">
-                  <TableCell className="sticky left-0 z-30 bg-card"></TableCell>
-                  <TableCell>Bruttovinst</TableCell>
-                  {months.map((month) => {
-                    const { totalGrossProfit } = getGroupedTotals("Plåt", month);
-                    return (
-                      <TableCell key={month} className="text-right text-success">
-                        {formatCurrency(totalGrossProfit)}
-                      </TableCell>
-                    );
-                  })}
-                  <TableCell className="text-right text-success">
-                    {formatCurrency(getGroupYearTotal("Plåt").totalGrossProfit)}
-                  </TableCell>
-                </TableRow>
-              </>
-            )}
-
-            {/* Övriga products - show individually (exclude Färsmaskiner, Kyla och värme, and Ångstäd) */}
-            {businessAreas
-              .filter(area => {
-                const name = area.name.toLowerCase();
-                return !name.includes("tina") && 
-                       !name.includes("plåt") && 
-                       !name.includes("färsmaskiner") && 
-                       !name.includes("kyla och värme") &&
-                       !name.includes("ångstäd");
-              })
-              .map(area => (
-                <Fragment key={`summary-${area.name}`}>
-                  {/* Individual area Sticky Month Header */}
-                  <TableRow className="bg-card">
-                    <TableCell className="sticky top-0 left-0 z-30 bg-card" colSpan={2}>
-                      &nbsp;
-                    </TableCell>
-                    {months.map((m) => (
-                      <TableCell key={m} className="text-right min-w-[120px] sticky top-0 z-20 bg-card">
-                        {m}
-                      </TableCell>
-                    ))}
-                    <TableCell className="text-right min-w-[120px] sticky top-0 z-20 bg-card">Totalt</TableCell>
-                  </TableRow>
-                  <TableRow className="bg-card font-medium">
-                    <TableCell className="sticky left-0 z-30 bg-card">
-                      {area.name}
-                    </TableCell>
-                    <TableCell>Intäkt</TableCell>
-                    {area.monthlyData.map((data) => (
-                      <TableCell key={data.month} className="text-right">
-                        {formatCurrency(data.revenue)}
-                      </TableCell>
-                    ))}
-                    <TableCell className="text-right">
-                      {formatCurrency(area.monthlyData.reduce((sum, d) => sum + d.revenue, 0))}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow className="bg-card font-medium">
-                    <TableCell className="sticky left-0 z-30 bg-card"></TableCell>
-                    <TableCell>BV%</TableCell>
-                    {area.monthlyData.map((data) => (
-                      <TableCell key={data.month} className="text-right">
-                        {data.contributionMargin.toFixed(1)}%
-                      </TableCell>
-                    ))}
-                    <TableCell className="text-right">
-                      {(
-                        area.monthlyData.reduce((sum, d) => sum + d.grossProfit, 0) /
-                        area.monthlyData.reduce((sum, d) => sum + d.revenue, 0) * 100
-                      ).toFixed(1)}%
-                    </TableCell>
-                  </TableRow>
-                  <TableRow className="bg-card font-medium border-b-2">
-                    <TableCell className="sticky left-0 z-30 bg-card"></TableCell>
-                    <TableCell>Bruttovinst</TableCell>
-                    {area.monthlyData.map((data) => (
-                      <TableCell key={data.month} className="text-right text-success">
-                        {formatCurrency(data.grossProfit)}
-                      </TableCell>
-                    ))}
-                    <TableCell className="text-right text-success">
-                      {formatCurrency(area.monthlyData.reduce((sum, d) => sum + d.grossProfit, 0))}
-                    </TableCell>
-                  </TableRow>
-                </Fragment>
-              ))
-            }
           </TableBody>
         </Table>
       </div>
