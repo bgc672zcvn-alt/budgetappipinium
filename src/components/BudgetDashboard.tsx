@@ -521,18 +521,33 @@ export const BudgetDashboard = () => {
       const recomputed = prevMonthly.map((m) => {
         const key = norm(m.month);
 
-        let sumRevenue = 0;
-        let sumGrossProfit = 0;
-        mergedAreas.forEach((area) => {
+        // Prev areas (before update)
+        let prevAreasRevenue = 0;
+        let prevAreasGrossProfit = 0;
+        existingAreas.forEach((area) => {
           const d = area.monthlyData.find((d) => norm(d.month) === key);
           if (d) {
-            sumRevenue += d.revenue ?? 0;
-            sumGrossProfit += d.grossProfit ?? Math.round((d.revenue ?? 0) * ((d.contributionMargin ?? 0) / 100));
+            prevAreasRevenue += d.revenue ?? 0;
+            prevAreasGrossProfit += d.grossProfit ?? Math.round((d.revenue ?? 0) * ((d.contributionMargin ?? 0) / 100));
           }
         });
 
-        const revenue = Math.round(sumRevenue);
-        const grossProfit = Math.round(sumGrossProfit);
+        // New areas (after update)
+        let newAreasRevenue = 0;
+        let newAreasGrossProfit = 0;
+        mergedAreas.forEach((area) => {
+          const d = area.monthlyData.find((d) => norm(d.month) === key);
+          if (d) {
+            newAreasRevenue += d.revenue ?? 0;
+            newAreasGrossProfit += d.grossProfit ?? Math.round((d.revenue ?? 0) * ((d.contributionMargin ?? 0) / 100));
+          }
+        });
+
+        const deltaRevenue = Math.round(newAreasRevenue - prevAreasRevenue);
+        const deltaGrossProfit = Math.round(newAreasGrossProfit - prevAreasGrossProfit);
+
+        const revenue = Math.max(0, m.revenue + deltaRevenue);
+        const grossProfit = Math.max(0, m.grossProfit + deltaGrossProfit);
         const cogs = Math.max(0, revenue - grossProfit);
         const grossMargin = revenue > 0 ? Math.round((grossProfit / revenue) * 1000) / 10 : 0;
 
