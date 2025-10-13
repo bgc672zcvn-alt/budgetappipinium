@@ -122,7 +122,7 @@ export const BudgetDashboard = () => {
   const { saveVersion, checkAdminStatus } = useBudgetHistory();
   const [view, setView] = useState<CompanyView>("ipinium");
   const [user, setUser] = useState<User | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [budgetData, setBudgetData] = useState<Record<CompanyView, BudgetData>>({
     ipinium: normalizeTotals(ipiniumBudget),
@@ -171,7 +171,7 @@ export const BudgetDashboard = () => {
         if (yearsError) throw yearsError;
 
         const years = Array.from(new Set((yearsData || []).map(row => row.year)));
-        setAvailableYears(years.length > 0 ? years : [new Date().getFullYear()]);
+        setAvailableYears(years.length > 0 ? years : [2026]);
 
         // Hämta data för valt år
         const { data, error } = await supabase
@@ -191,8 +191,10 @@ export const BudgetDashboard = () => {
           const ip = loaded['ipinium ab']
             ? {
                 ...ipiniumBudget,
-                // Only use the monthlyData from backend, keep everything else from local data
+                // Only use the monthlyData, businessAreas, and costCategories from backend
                 monthlyData: (loaded['ipinium ab'] as BudgetData).monthlyData || ipiniumBudget.monthlyData,
+                businessAreas: (loaded['ipinium ab'] as BudgetData).businessAreas || ipiniumBudget.businessAreas,
+                costCategories: (loaded['ipinium ab'] as BudgetData).costCategories || ipiniumBudget.costCategories,
                 company: 'Ipinium AB',
               }
             : ipiniumBudget;
@@ -200,8 +202,10 @@ export const BudgetDashboard = () => {
           const op = loaded['onepan']
             ? {
                 ...onepanBudget,
-                // Only use the monthlyData from backend, keep everything else from local data
+                // Only use the monthlyData, businessAreas, and costCategories from backend
                 monthlyData: (loaded['onepan'] as BudgetData).monthlyData || onepanBudget.monthlyData,
+                businessAreas: (loaded['onepan'] as BudgetData).businessAreas || onepanBudget.businessAreas,
+                costCategories: (loaded['onepan'] as BudgetData).costCategories || onepanBudget.costCategories,
                 company: 'OnePan',
               }
             : onepanBudget;
@@ -225,7 +229,7 @@ export const BudgetDashboard = () => {
     loadBudgets();
   }, [selectedYear]);
 
-  // Spara ändringar till backend - endast månadsdata, aldrig totalRevenue
+  // Spara ändringar till backend
   useEffect(() => {
     if (isLoading) return;
 
@@ -239,9 +243,7 @@ export const BudgetDashboard = () => {
               year: selectedYear,
               data: {
                 ...budgetData.ipinium,
-                totalRevenue: undefined, // Aldrig spara totalRevenue - det beräknas alltid
-                businessAreas: undefined, // Aldrig spara businessAreas - det beräknas alltid
-                costCategories: undefined, // Aldrig spara costCategories - det beräknas alltid
+                totalRevenue: undefined, // Aldrig spara totalRevenue - det beräknas från monthlyData
               } as any 
             },
             { 
@@ -249,9 +251,7 @@ export const BudgetDashboard = () => {
               year: selectedYear,
               data: {
                 ...budgetData.onepan,
-                totalRevenue: undefined, // Aldrig spara totalRevenue - det beräknas alltid
-                businessAreas: undefined, 
-                costCategories: undefined,
+                totalRevenue: undefined, // Aldrig spara totalRevenue - det beräknas från monthlyData
               } as any 
             },
           ], { onConflict: 'company,year' });
