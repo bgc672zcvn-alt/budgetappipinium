@@ -163,6 +163,8 @@ export const BudgetDashboard = () => {
   const skipNextSaveRef = useRef(false);
   const lastSavedHashRef = useRef<string | null>(null);
   const saveDebounceRef = useRef<number | null>(null);
+  const savingRef = useRef(false);
+  const realtimeReloadRef = useRef<number | null>(null);
 
   const budget = budgetData[view];
 
@@ -279,10 +281,16 @@ export const BudgetDashboard = () => {
         },
         (payload) => {
           console.log('Budget data changed:', payload);
-          // Reload budgets when any change is detected
+          if (savingRef.current) {
+            console.log('Ignoring realtime update during local save');
+            return;
+          }
+          // Reload budgets when any change is detected (debounced)
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
-            // Small delay to ensure consistency
-            setTimeout(() => {
+            if (realtimeReloadRef.current) {
+              clearTimeout(realtimeReloadRef.current);
+            }
+            realtimeReloadRef.current = window.setTimeout(() => {
               const loadUpdatedBudgets = async () => {
                 try {
                   const { data, error } = await supabase
@@ -330,6 +338,7 @@ export const BudgetDashboard = () => {
                       onepan: nop,
                       combined: computeCombined(nip, nop),
                     });
+                    realtimeReloadRef.current = null;
 
                     toast({
                       title: "Uppdatering",
@@ -383,6 +392,7 @@ export const BudgetDashboard = () => {
 
     saveDebounceRef.current = window.setTimeout(async () => {
       try {
+        savingRef.current = true;
         await supabase
           .from('budget_data')
           .upsert([
@@ -411,6 +421,10 @@ export const BudgetDashboard = () => {
           description: 'Kunde inte spara ändringar till backend.',
           variant: 'destructive',
         });
+      } finally {
+        setTimeout(() => {
+          savingRef.current = false;
+        }, 600);
       }
     }, 500);
 
