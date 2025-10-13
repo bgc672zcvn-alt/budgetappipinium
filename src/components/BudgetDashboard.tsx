@@ -762,7 +762,12 @@ export const BudgetDashboard = () => {
                 <Undo2 className="h-4 w-4 mr-2" />
                 Ångra
               </Button>
-              <BudgetExport budgetData={budget} year={selectedYear} />
+              <BudgetExport 
+                ipiniumData={budgetData.ipinium} 
+                onepanData={budgetData.onepan} 
+                combinedData={budgetData.combined} 
+                year={selectedYear} 
+              />
               <VersionHistory company={view === "combined" ? "Ipinium AB" : budget.company} onRestore={handleRestoreVersion} />
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
