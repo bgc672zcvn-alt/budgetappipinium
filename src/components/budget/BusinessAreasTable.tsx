@@ -34,6 +34,8 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate, company }: Busines
   const [editType, setEditType] = useState<'revenue' | 'margin' | 'yearlyMargin' | 'account'>('revenue');
   const [editingYearlyMargin, setEditingYearlyMargin] = useState<string | null>(null);
   const [editingYearlyRevenue, setEditingYearlyRevenue] = useState<string | null>(null);
+  const [editingAccountYearly, setEditingAccountYearly] = useState<{ area: string; account: string } | null>(null);
+  const [editAccountYearlyValue, setEditAccountYearlyValue] = useState<number>(0);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("sv-SE", {
@@ -199,6 +201,46 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate, company }: Busines
 
     onUpdate(updatedAreas);
     setEditingYearlyRevenue(null);
+  };
+
+  // Konto: redigera årstotal på intäktskonto (fördelas jämnt över 12 månader)
+  const startEditAccountYearlyRevenue = (areaName: string, accountNumber: string, currentTotal: number) => {
+    setEditingAccountYearly({ area: areaName, account: accountNumber });
+    setEditAccountYearlyValue(currentTotal);
+  };
+
+  const cancelEditAccountYearlyRevenue = () => {
+    setEditingAccountYearly(null);
+  };
+
+  const saveEditAccountYearlyRevenue = () => {
+    if (!editingAccountYearly) return;
+
+    const { area: areaName, account: accountNumber } = editingAccountYearly;
+
+    const updatedAreas = businessAreas.map(area => {
+      if (area.name !== areaName || !area.accounts) return area;
+
+      const updatedAccounts = area.accounts.map(acc => {
+        if (acc.accountNumber !== accountNumber) return acc;
+        const base = Math.floor(editAccountYearlyValue / 12);
+        const remainder = editAccountYearlyValue - base * 12;
+        const newMonthly = months.map((month, idx) => ({ month, amount: base + (idx < remainder ? 1 : 0) }));
+        return { ...acc, monthlyData: newMonthly };
+      });
+
+      // Recompute area monthly revenues from accounts
+      const updatedMonthlyData = area.monthlyData.map((data, idx) => {
+        const newRevenue = updatedAccounts.reduce((sum, acc) => sum + (acc.monthlyData[idx]?.amount || 0), 0);
+        const grossProfit = newRevenue * (data.contributionMargin / 100);
+        return { ...data, revenue: newRevenue, grossProfit };
+      });
+
+      return { ...area, accounts: updatedAccounts, monthlyData: updatedMonthlyData };
+    });
+
+    onUpdate(updatedAreas);
+    setEditingAccountYearly(null);
   };
 
   const getAccountTotal = (account: RevenueAccount) => {
@@ -455,7 +497,31 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate, company }: Busines
                       </TableCell>
                     ))}
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(getAccountTotal(account))}
+                      {editingAccountYearly && editingAccountYearly.area === area.name && editingAccountYearly.account === account.accountNumber ? (
+                        <div className="flex items-center gap-1 justify-end">
+                          <Input
+                            type="number"
+                            value={editAccountYearlyValue}
+                            onChange={(e) => setEditAccountYearlyValue(Number(e.target.value))}
+                            className="w-28 h-7"
+                            autoFocus
+                          />
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveEditAccountYearlyRevenue}>
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEditAccountYearlyRevenue}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => startEditAccountYearlyRevenue(area.name, account.accountNumber!, getAccountTotal(account))}
+                          className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 group transition-colors ml-auto"
+                        >
+                          <span>{formatCurrency(getAccountTotal(account))}</span>
+                          <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                        </button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

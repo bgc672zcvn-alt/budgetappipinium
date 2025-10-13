@@ -32,6 +32,8 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate, company }: Expa
   const [editValue, setEditValue] = useState<number>(0);
   const [editingCategoryTotal, setEditingCategoryTotal] = useState<string | null>(null);
   const [editCategoryTotalValue, setEditCategoryTotalValue] = useState<number>(0);
+  const [editingAccountYearly, setEditingAccountYearly] = useState<{ category: string; account: string } | null>(null);
+  const [editAccountYearlyValue, setEditAccountYearlyValue] = useState<number>(0);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("sv-SE", {
@@ -152,6 +154,43 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate, company }: Expa
 
     onUpdate(updatedCategories);
     cancelEditCategoryTotal();
+  };
+
+  // Konto: redigera årstotal och fördela jämnt över 12 månader
+  const startEditAccountYearly = (categoryName: string, accountName: string, currentTotal: number) => {
+    setEditingAccountYearly({ category: categoryName, account: accountName });
+    setEditAccountYearlyValue(currentTotal);
+  };
+
+  const cancelEditAccountYearly = () => {
+    setEditingAccountYearly(null);
+  };
+
+  const saveEditAccountYearly = () => {
+    if (!editingAccountYearly) return;
+
+    const { category: categoryName, account: accountName } = editingAccountYearly;
+
+    const updatedCategories = costCategories.map(cat => {
+      if (cat.name !== categoryName) return cat;
+
+      const updatedAccounts = cat.accounts.map(acc => {
+        if (acc.name !== accountName) return acc;
+
+        const base = Math.floor(editAccountYearlyValue / 12);
+        const remainder = editAccountYearlyValue - base * 12;
+        const newMonthly = months.map((month, idx) => ({
+          month,
+          amount: base + (idx < remainder ? 1 : 0),
+        }));
+        return { ...acc, monthlyData: newMonthly };
+      });
+
+      return { ...cat, accounts: updatedAccounts };
+    });
+
+    onUpdate(updatedCategories);
+    cancelEditAccountYearly();
   };
 
   return (
@@ -279,7 +318,35 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate, company }: Expa
                         </TableCell>
                       ))}
                       <TableCell className="text-right">
-                        {formatCurrency(account.monthlyData.reduce((sum, d) => sum + d.amount, 0))}
+                        {editingAccountYearly && editingAccountYearly.category === category.name && editingAccountYearly.account === account.name ? (
+                          <div className="flex items-center gap-1 justify-end">
+                            <Input
+                              type="number"
+                              value={editAccountYearlyValue}
+                              onChange={(e) => setEditAccountYearlyValue(Number(e.target.value))}
+                              className="w-28 h-7"
+                              autoFocus
+                            />
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveEditAccountYearly}>
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEditAccountYearly}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const total = account.monthlyData.reduce((sum, d) => sum + d.amount, 0);
+                              startEditAccountYearly(category.name, account.name, total);
+                            }}
+                            className="hover:bg-accent px-2 py-1 rounded flex items-center gap-1 group transition-colors ml-auto"
+                          >
+                            <span>{formatCurrency(account.monthlyData.reduce((sum, d) => sum + d.amount, 0))}</span>
+                            <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                          </button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
