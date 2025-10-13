@@ -199,10 +199,7 @@ export const BudgetDashboard = () => {
               }
             : ipiniumBudget;
 
-          // Force 2026 target for Ipinium to 28,000,000 to prevent regressions
-          const ip = selectedYear === 2026
-            ? { ...ipBase, targetRevenue: 28000000 }
-            : ipBase;
+          const ip = ipBase;
 
           const op = loaded['onepan']
             ? {
@@ -215,12 +212,8 @@ export const BudgetDashboard = () => {
               }
             : onepanBudget;
 
-          const nip0 = normalizeTotals(ip);
-          const nop0 = normalizeTotals(op);
-
-          // Enforce targetRevenue totals by rebalancing monthly revenue to match targets exactly
-          const nip = rebalanceToTarget(nip0);
-          const nop = rebalanceToTarget(nop0);
+          const nip = normalizeTotals(ip);
+          const nop = normalizeTotals(op);
 
           setBudgetData({
             ipinium: nip,
