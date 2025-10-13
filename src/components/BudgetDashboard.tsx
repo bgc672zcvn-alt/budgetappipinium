@@ -160,6 +160,9 @@ export const BudgetDashboard = () => {
   });
   const [previousState, setPreviousState] = useState<Record<CompanyView, BudgetData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const skipNextSaveRef = useRef(false);
+  const lastSavedHashRef = useRef<string | null>(null);
+  const saveDebounceRef = useRef<number | null>(null);
 
   const budget = budgetData[view];
 
@@ -244,6 +247,8 @@ export const BudgetDashboard = () => {
           const nip = normalizeTotals(ip);
           const nop = normalizeTotals(op);
 
+          // Mark that this update came from remote load to avoid save loop
+          skipNextSaveRef.current = true;
           setBudgetData({
             ipinium: nip,
             onepan: nop,
@@ -318,6 +323,8 @@ export const BudgetDashboard = () => {
                     const nip = normalizeTotals(ip);
                     const nop = normalizeTotals(op);
 
+                    // Mark that this update came from realtime to avoid save loop
+                    skipNextSaveRef.current = true;
                     setBudgetData({
                       ipinium: nip,
                       onepan: nop,
@@ -346,11 +353,35 @@ export const BudgetDashboard = () => {
   }, [selectedYear, toast]);
 
 
-  // Spara ändringar till backend
+  // Spara ändringar till backend (debounced, skip on remote updates)
   useEffect(() => {
     if (isLoading) return;
 
-    const saveBudgets = async () => {
+    // Skip if this update came from a remote load/realtime
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
+
+    const currentHash = JSON.stringify({
+      ip: budgetData.ipinium.monthlyData,
+      op: budgetData.onepan.monthlyData,
+      ipAreas: budgetData.ipinium.businessAreas,
+      opAreas: budgetData.onepan.businessAreas,
+      ipCosts: budgetData.ipinium.costCategories,
+      opCosts: budgetData.onepan.costCategories,
+      year: selectedYear,
+    });
+
+    if (lastSavedHashRef.current === currentHash) {
+      return;
+    }
+
+    if (saveDebounceRef.current) {
+      clearTimeout(saveDebounceRef.current);
+    }
+
+    saveDebounceRef.current = window.setTimeout(async () => {
       try {
         await supabase
           .from('budget_data')
@@ -360,7 +391,7 @@ export const BudgetDashboard = () => {
               year: selectedYear,
               data: {
                 ...budgetData.ipinium,
-                totalRevenue: undefined, // Aldrig spara totalRevenue - det beräknas från monthlyData
+                totalRevenue: undefined,
               } as any 
             },
             { 
@@ -368,21 +399,26 @@ export const BudgetDashboard = () => {
               year: selectedYear,
               data: {
                 ...budgetData.onepan,
-                totalRevenue: undefined, // Aldrig spara totalRevenue - det beräknas från monthlyData
+                totalRevenue: undefined,
               } as any 
             },
           ], { onConflict: 'company,year' });
+        lastSavedHashRef.current = currentHash;
       } catch (error) {
         console.error('Fel vid sparande:', error);
         toast({
-          title: "Fel vid sparande",
-          description: "Kunde inte spara ändringar till backend.",
-          variant: "destructive",
+          title: 'Fel vid sparande',
+          description: 'Kunde inte spara ändringar till backend.',
+          variant: 'destructive',
         });
       }
-    };
+    }, 500);
 
-    saveBudgets();
+    return () => {
+      if (saveDebounceRef.current) {
+        clearTimeout(saveDebounceRef.current);
+      }
+    };
   }, [budgetData, isLoading, selectedYear, toast]);
 
   const handleLogout = async () => {
