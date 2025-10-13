@@ -7,6 +7,7 @@ import { BudgetMetrics } from "./budget/BudgetMetrics";
 import { BudgetChart } from "./budget/BudgetChart";
 import { BudgetTable } from "./budget/BudgetTable";
 import { BusinessAreasTable } from "./budget/BusinessAreasTable";
+import { BusinessAreaCards } from "./budget/BusinessAreaCards";
 import { ExpandableCostsTable } from "./budget/ExpandableCostsTable";
 import { VersionHistory } from "./budget/VersionHistory";
 import { NewBudgetYearDialog } from "./budget/NewBudgetYearDialog";
@@ -668,11 +669,14 @@ export const BudgetDashboard = () => {
 
             {/* Business Areas (only for Ipinium) */}
             {budget.businessAreas && (
-              <BusinessAreasTable
-                businessAreas={budget.businessAreas}
-                onUpdate={handleBusinessAreasUpdate}
-                company={budget.company}
-              />
+              <>
+                <BusinessAreaCards businessAreas={budget.businessAreas} />
+                <BusinessAreasTable
+                  businessAreas={budget.businessAreas}
+                  onUpdate={handleBusinessAreasUpdate}
+                  company={budget.company}
+                />
+              </>
             )}
 
             {/* Chart */}
