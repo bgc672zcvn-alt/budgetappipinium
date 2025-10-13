@@ -32,70 +32,128 @@ export const BudgetExport = ({ ipiniumData, onepanData, combinedData, year }: Bu
   };
 
   const addCompanySection = (doc: jsPDF, budgetData: BudgetData, startY: number, title: string) => {
-    doc.setFontSize(16);
+    doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text(title, 14, startY);
     
-    const y = startY + 10;
+    let y = startY + 10;
     
-    // Calculate totals
+    // Calculate totals for top summary cards
     const totalRevenue = budgetData.monthlyData.reduce((sum, m) => sum + m.revenue, 0);
-    const totalGrossProfit = budgetData.monthlyData.reduce((sum, m) => sum + m.grossProfit, 0);
-    const totalPersonnel = budgetData.monthlyData.reduce((sum, m) => sum + m.personnel, 0);
-    const totalMarketing = budgetData.monthlyData.reduce((sum, m) => sum + m.marketing, 0);
-    const totalOffice = budgetData.monthlyData.reduce((sum, m) => sum + m.office, 0);
-    const totalOtherOpex = budgetData.monthlyData.reduce((sum, m) => sum + m.otherOpex, 0);
-    const totalDepreciation = budgetData.monthlyData.reduce((sum, m) => sum + m.depreciation, 0);
     const totalEBIT = budgetData.monthlyData.reduce((sum, m) => sum + m.ebit, 0);
-    const totalFinancial = budgetData.monthlyData.reduce((sum, m) => sum + m.financialCosts, 0);
     const totalResult = budgetData.monthlyData.reduce((sum, m) => sum + m.resultAfterFinancial, 0);
+    const ebitMargin = totalRevenue > 0 ? ((totalEBIT/totalRevenue)*100).toFixed(1) : '0.0';
+    const resultMargin = totalRevenue > 0 ? ((totalResult/totalRevenue)*100).toFixed(1) : '0.0';
 
-    // Create summary cards
-    const summaryRows = [
-      ['Intäkter', formatNumber(totalRevenue), '100%'],
-      ['Bruttovinst', formatNumber(totalGrossProfit), `${totalRevenue > 0 ? ((totalGrossProfit/totalRevenue)*100).toFixed(1) : 0}%`],
-      ['Personal', formatNumber(totalPersonnel), `${totalRevenue > 0 ? ((totalPersonnel/totalRevenue)*100).toFixed(1) : 0}%`],
-      ['Marketing', formatNumber(totalMarketing), `${totalRevenue > 0 ? ((totalMarketing/totalRevenue)*100).toFixed(1) : 0}%`],
-      ['Lokaler & Admin', formatNumber(totalOffice), `${totalRevenue > 0 ? ((totalOffice/totalRevenue)*100).toFixed(1) : 0}%`],
-      ['Övriga kostnader', formatNumber(totalOtherOpex), `${totalRevenue > 0 ? ((totalOtherOpex/totalRevenue)*100).toFixed(1) : 0}%`],
-      ['Avskrivningar', formatNumber(totalDepreciation), `${totalRevenue > 0 ? ((totalDepreciation/totalRevenue)*100).toFixed(1) : 0}%`],
-      ['EBIT', formatNumber(totalEBIT), `${totalRevenue > 0 ? ((totalEBIT/totalRevenue)*100).toFixed(1) : 0}%`],
-      ['Finansiella kostnader', formatNumber(totalFinancial), `${totalRevenue > 0 ? ((totalFinancial/totalRevenue)*100).toFixed(1) : 0}%`],
-      ['Resultat efter finansiella poster', formatNumber(totalResult), `${totalRevenue > 0 ? ((totalResult/totalRevenue)*100).toFixed(1) : 0}%`],
+    // Top summary cards
+    const summaryCards = [
+      ['Total Revenue ' + year, 'EBIT', 'Result After Financial'],
+      [formatNumber(totalRevenue) + ' kr', formatNumber(totalEBIT) + ' kr', formatNumber(totalResult) + ' kr'],
+      ['', ebitMargin + '% margin', resultMargin + '% margin']
     ];
 
     autoTable(doc, {
       startY: y,
-      head: [['Kategori', 'Belopp (SEK)', '% av intäkt']],
-      body: summaryRows,
+      head: [summaryCards[0]],
+      body: [summaryCards[1], summaryCards[2]],
       theme: 'grid',
       styles: { 
-        fontSize: 9,
-        cellPadding: 3,
-        halign: 'right'
+        fontSize: 11,
+        cellPadding: 5,
+        halign: 'left',
+        fontStyle: 'bold'
       },
       columnStyles: {
-        0: { halign: 'left', fontStyle: 'bold', cellWidth: 80 },
-        1: { cellWidth: 45 },
-        2: { cellWidth: 30 }
+        0: { cellWidth: 60 },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 60 }
       },
       headStyles: { 
         fillColor: [41, 128, 185],
         textColor: 255,
-        fontStyle: 'bold',
-        halign: 'center'
-      },
-      alternateRowStyles: { fillColor: [245, 245, 245] }
+        fontSize: 10,
+        fontStyle: 'bold'
+      }
     });
 
-    return (doc as any).lastAutoTable.finalY;
+    y = (doc as any).lastAutoTable.finalY + 10;
+
+    // Business Areas Cards
+    if (budgetData.businessAreas && budgetData.businessAreas.length > 0) {
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Affärsområden - Detaljerad Budget', 14, y);
+      y += 8;
+
+      budgetData.businessAreas.forEach((area) => {
+        const areaRevenue = area.monthlyData.reduce((sum, m) => sum + m.revenue, 0);
+        const areaGrossProfit = area.monthlyData.reduce((sum, m) => sum + m.grossProfit, 0);
+        const areaMargin = areaRevenue > 0 ? ((areaGrossProfit/areaRevenue)*100).toFixed(1) : '0.0';
+        const contributionMargin = area.monthlyData[0]?.contributionMargin || 
+          (areaRevenue > 0 ? parseFloat(areaMargin) : 0);
+
+        // Check if we need a new page
+        if (y > 250) {
+          doc.addPage();
+          y = 20;
+        }
+
+        // Business Area Card
+        const areaData = [
+          [area.name, '', ''],
+          ['Revenue', 'Gross Profit', 'Contribution Margin'],
+          [formatNumber(areaRevenue) + ' kr', formatNumber(areaGrossProfit) + ' kr\n' + areaMargin + '% margin', contributionMargin.toFixed(1) + '%']
+        ];
+
+        autoTable(doc, {
+          startY: y,
+          body: areaData,
+          theme: 'plain',
+          styles: { 
+            fontSize: 10,
+            cellPadding: 4
+          },
+          columnStyles: {
+            0: { cellWidth: 60, fontStyle: 'normal' },
+            1: { cellWidth: 60, fontStyle: 'normal' },
+            2: { cellWidth: 60, fontStyle: 'normal' }
+          },
+          didParseCell: function(data) {
+            // Header row (area name)
+            if (data.row.index === 0) {
+              data.cell.styles.fontSize = 12;
+              data.cell.styles.fontStyle = 'bold';
+              data.cell.styles.fillColor = [240, 240, 240];
+              data.cell.styles.textColor = [0, 0, 0];
+            }
+            // Label row
+            else if (data.row.index === 1) {
+              data.cell.styles.fontSize = 9;
+              data.cell.styles.textColor = [100, 100, 100];
+              data.cell.styles.fontStyle = 'normal';
+            }
+            // Value row
+            else if (data.row.index === 2) {
+              data.cell.styles.fontSize = 10;
+              data.cell.styles.fontStyle = 'bold';
+            }
+          },
+          tableLineColor: [200, 200, 200],
+          tableLineWidth: 0.1,
+        });
+
+        y = (doc as any).lastAutoTable.finalY + 6;
+      });
+    }
+
+    return y;
   };
 
   const exportToPDF = () => {
     const doc = new jsPDF('portrait', 'mm', 'a4');
     
     // Title and Header
-    doc.setFontSize(22);
+    doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
     doc.text(`Budgetrapport ${year}`, 14, 15);
     doc.setFontSize(10);
@@ -106,28 +164,18 @@ export const BudgetExport = ({ ipiniumData, onepanData, combinedData, year }: Bu
     let currentY = addCompanySection(doc, ipiniumData, 32, 'Ipinium AB');
 
     // OnePan Section
-    if (currentY > 220) {
-      doc.addPage();
-      currentY = 20;
-    } else {
-      currentY += 15;
-    }
-    currentY = addCompanySection(doc, onepanData, currentY, 'OnePan');
+    doc.addPage();
+    currentY = addCompanySection(doc, onepanData, 20, 'OnePan');
 
     // Combined Section (Koncern)
-    if (currentY > 220) {
-      doc.addPage();
-      currentY = 20;
-    } else {
-      currentY += 15;
-    }
-    addCompanySection(doc, combinedData, currentY, 'Koncern (Totalt)');
+    doc.addPage();
+    addCompanySection(doc, combinedData, 20, 'Koncern (Totalt)');
 
     doc.save(`Budgetrapport_${year}.pdf`);
     
     toast({
       title: "PDF exporterad",
-      description: "Budgetrapporten har exporterats som PDF",
+      description: "Budgetrapporten har exporterats med affärsområden",
     });
   };
 
