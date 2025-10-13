@@ -245,63 +245,13 @@ export const BudgetDashboard = () => {
           const nip = normalizeTotals(ipBase);
           const nop = normalizeTotals(opBase);
 
-          // Heuristic: if server data differs >5% from current local state, prefer local and immediately sync it to server
-          const localIpSum = sumRevenue(budgetData.ipinium.monthlyData);
-          const localOpSum = sumRevenue(budgetData.onepan.monthlyData);
-          const remoteIpSum = sumRevenue(nip.monthlyData);
-          const remoteOpSum = sumRevenue(nop.monthlyData);
-
-          const ipDiff = localIpSum === 0 ? 0 : Math.abs(remoteIpSum - localIpSum) / localIpSum;
-          const opDiff = localOpSum === 0 ? 0 : Math.abs(remoteOpSum - localOpSum) / localOpSum;
-
-          if (ipDiff > 0.05 || opDiff > 0.05) {
-            console.log('Serverdata avviker >5%, skriver upp lokal budget till server');
-            try {
-              savingRef.current = true;
-              await supabase
-                .from('budget_data')
-                .upsert([
-                  {
-                    company: 'Ipinium AB',
-                    year: selectedYear,
-                    data: { ...budgetData.ipinium, totalRevenue: undefined } as any,
-                  },
-                  {
-                    company: 'OnePan',
-                    year: selectedYear,
-                    data: { ...budgetData.onepan, totalRevenue: undefined } as any,
-                  },
-                ], { onConflict: 'company,year' });
-              lastSavedHashRef.current = JSON.stringify({
-                ip: budgetData.ipinium.monthlyData,
-                op: budgetData.onepan.monthlyData,
-                ipAreas: budgetData.ipinium.businessAreas,
-                opAreas: budgetData.onepan.businessAreas,
-                ipCosts: budgetData.ipinium.costCategories,
-                opCosts: budgetData.onepan.costCategories,
-                year: selectedYear,
-              });
-              skipNextSaveRef.current = true; // avoid immediate save loop
-              toast({ title: 'Synkad', description: 'Synkade servern till din aktuella budget.' });
-            } catch (e) {
-              console.error('Kunde inte synka lokal budget till server:', e);
-            } finally {
-              setIsLoading(false);
-              setBudgetData((prev) => ({
-                ...prev,
-                combined: computeCombined(prev.ipinium, prev.onepan),
-              }));
-              setTimeout(() => (savingRef.current = false), 600);
-            }
-          } else {
-            // Apply backend data normally
-            skipNextSaveRef.current = true;
-            setBudgetData({
-              ipinium: nip,
-              onepan: nop,
-              combined: computeCombined(nip, nop),
-            });
-          }
+          // Apply backend data as single source of truth when available
+          skipNextSaveRef.current = true;
+          setBudgetData({
+            ipinium: nip,
+            onepan: nop,
+            combined: computeCombined(nip, nop),
+          });
         }
       } catch (error) {
         console.error('Fel vid laddning av budget:', error);
