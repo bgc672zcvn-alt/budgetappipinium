@@ -544,6 +544,123 @@ const generateOnePanCostCategories = (): CostCategory[] => {
   ];
 };
 
+// OnePan Business Areas - Revenue accounts from accounting plan
+const generateOnePanBusinessAreas = (monthlyData: MonthlyData[]): BusinessArea[] => {
+  type AreaDef = { name: string; share: number; margin: number; accounts: { number: string; name: string; share: number }[] };
+  const areas: AreaDef[] = [
+    { 
+      name: "Försäljning Sverige", 
+      share: 0.70, 
+      margin: 42.0,
+      accounts: [
+        { number: "3001", name: "Försäljning pannor från hemsida, 25 % moms", share: 0.7 },
+        { number: "3010", name: "Försäljning pannor återförsäljare, 25% moms", share: 0.25 },
+        { number: "3006", name: "Sample Sale försäljning/försäljning på lagret", share: 0.05 }
+      ]
+    },
+    { 
+      name: "RC Produkter", 
+      share: 0.05, 
+      margin: 45.0,
+      accounts: [
+        { number: "3020", name: "Försäljning pannor RC hemsida, 25 % moms", share: 1.0 }
+      ]
+    },
+    { 
+      name: "Export & EU", 
+      share: 0.15, 
+      margin: 40.0,
+      accounts: [
+        { number: "3105", name: "Försäljning varor till land utanför EU", share: 0.2 },
+        { number: "3106", name: "Försäljning varor till annat EU-land, momspliktig", share: 0.25 },
+        { number: "3108", name: "Försäljning varor till annat EU-land, momsfri", share: 0.4 },
+        { number: "3109", name: "Försäljning av varor till Norge, 25% moms", share: 0.15 }
+      ]
+    },
+    { 
+      name: "Frakter & Övrigt", 
+      share: 0.10, 
+      margin: 80.0,
+      accounts: [
+        { number: "3520", name: "Fakturerade frakter", share: 0.7 },
+        { number: "3521", name: "Fakturerade frakter EU", share: 0.15 },
+        { number: "3522", name: "Fakturerade frakter, export", share: 0.1 },
+        { number: "3524", name: "Fakturerade frakter Norge", share: 0.05 }
+      ]
+    },
+  ];
+
+  const result: BusinessArea[] = areas.map((a) => ({ 
+    name: a.name, 
+    monthlyData: [] as BusinessAreaMonthly[],
+    accounts: a.accounts.map(acc => ({
+      accountNumber: acc.number,
+      name: acc.name,
+      monthlyData: [] as RevenueAccountMonthly[]
+    }))
+  }));
+
+  // För varje månad: fördela totalintäkten exakt med "largest remainder"-metoden
+  months.forEach((month, idx) => {
+    const total = monthlyData[idx]?.revenue ?? 0;
+
+    // Rå fördelning per area
+    const raw = areas.map((a) => total * a.share);
+    const base = raw.map((v) => Math.floor(v));
+    const frac = raw.map((v, i) => v - base[i]);
+
+    // Rester att fördela ut som +1 kr tills summan matchar exakt
+    let remainder = total - base.reduce((s, v) => s + v, 0);
+
+    // Sortera index efter störst decimalrest
+    const indices = areas.map((_, i) => i).sort((a, b) => frac[b] - frac[a]);
+
+    const increments = new Array(areas.length).fill(0);
+    for (let i = 0; i < remainder; i++) {
+      increments[indices[i % indices.length]] += 1;
+    }
+
+    // Bygg månadsrader per area
+    for (let i = 0; i < areas.length; i++) {
+      const revenue = base[i] + increments[i];
+      const margin = areas[i].margin;
+      const grossProfit = Math.round(revenue * (margin / 100));
+      (result[i].monthlyData as BusinessAreaMonthly[]).push({
+        month,
+        revenue,
+        contributionMargin: margin,
+        grossProfit,
+      });
+
+      // Fördela intäkten till konton enligt varje kontos share
+      if (result[i].accounts) {
+        const areaAccounts = areas[i].accounts;
+        const accountsRaw = areaAccounts.map(acc => revenue * acc.share);
+        const accountsBase = accountsRaw.map(v => Math.floor(v));
+        const accountsFrac = accountsRaw.map((v, idx) => v - accountsBase[idx]);
+        
+        let accountRemainder = revenue - accountsBase.reduce((s, v) => s + v, 0);
+        const accountIndices = areaAccounts.map((_, idx) => idx).sort((a, b) => accountsFrac[b] - accountsFrac[a]);
+        
+        const accountIncrements = new Array(areaAccounts.length).fill(0);
+        for (let j = 0; j < accountRemainder; j++) {
+          accountIncrements[accountIndices[j % accountIndices.length]] += 1;
+        }
+
+        areaAccounts.forEach((acc, accIdx) => {
+          const amount = accountsBase[accIdx] + accountIncrements[accIdx];
+          result[i].accounts![accIdx].monthlyData.push({
+            month,
+            amount
+          });
+        });
+      }
+    }
+  });
+
+  return result;
+};
+
 const onepanMonthly = generateOnepanMonthly();
 export const onepanBudget: BudgetData = {
   company: "OnePan",
@@ -551,6 +668,7 @@ export const onepanBudget: BudgetData = {
   targetRevenue: 7000000,
   growthRate: "+180%",
   monthlyData: onepanMonthly,
+  businessAreas: generateOnePanBusinessAreas(onepanMonthly),
   costCategories: generateOnePanCostCategories(),
 };
 

@@ -238,6 +238,7 @@ export const ExpandableCostsTable = ({ costCategories, onUpdate, company }: Expa
                   category.accounts.map((account) => (
                     <TableRow key={`${category.name}-${account.name}`} className="bg-background">
                       <TableCell className="pl-10 sticky left-0 bg-background z-20">
+                        <span className="text-muted-foreground mr-2">{account.accountNumber || ''}</span>
                         {account.name}
                       </TableCell>
                       {account.monthlyData.map((data) => (
