@@ -568,8 +568,8 @@ export const BudgetDashboard = () => {
   }, [view, budget]);
 
   return (
-    <div className="min-h-screen bg-background p-6 lg:p-8">
-      <div className="mx-auto max-w-7xl space-y-8">
+    <div className="min-h-screen bg-background p-4 lg:p-6">
+      <div className="w-full space-y-8">
         {/* Header */}
         <div className="space-y-4 mb-8">
           <div className="flex items-center justify-between">
