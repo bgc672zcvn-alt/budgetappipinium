@@ -135,25 +135,25 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
           </Select>
         </div>
       </div>
-      <div className="relative">
+      <div className="relative overflow-auto max-h-[600px]">
         <Table>
           <TableHeader>
             <TableRow className="bg-background">
-              <TableHead className="font-semibold sticky top-0 left-0 z-40 bg-background">Månad</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Intäkt</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Varukostnad</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Bruttovinst</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">BM %</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Personal</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Marknadsföring</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Lokal</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Övrig OPEX</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Total OPEX</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Avskrivning</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">EBIT</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">EBIT %</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Finansiellt</TableHead>
-              <TableHead className="text-right font-semibold sticky top-0 z-30 bg-background">Resultat</TableHead>
+              <TableHead className="font-semibold sticky top-0 left-0 z-50 bg-background border-b">Månad</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-40 bg-background border-b">Intäkt</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-40 bg-background border-b">Varukostnad</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-40 bg-background border-b">Bruttovinst</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-40 bg-background border-b">BM %</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-40 bg-background border-b">Personal</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-40 bg-background border-b">Marknadsföring</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-40 bg-background border-b">Lokal</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-40 bg-background border-b">Övrig OPEX</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-40 bg-background border-b">Total OPEX</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-40 bg-background border-b">Avskrivning</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-40 bg-background border-b">EBIT</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-40 bg-background border-b">EBIT %</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-40 bg-background border-b">Finansiellt</TableHead>
+              <TableHead className="text-right font-semibold sticky top-0 z-40 bg-background border-b">Resultat</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody aria-live="polite">
@@ -176,7 +176,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
               return (
                 <React.Fragment key={month.month}>
                   <TableRow className="hover:bg-muted/30">
-                    <TableCell className="font-medium sticky left-0 bg-background z-30">{month.month}</TableCell>
+                    <TableCell className="font-medium sticky left-0 bg-background z-30 border-r">{month.month}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex flex-col items-end gap-0.5">
                         <div className="flex items-center justify-end gap-1">

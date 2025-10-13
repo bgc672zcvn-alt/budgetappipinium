@@ -258,19 +258,19 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate, company }: Busines
         Klicka på pilen för att expandera till kontonivå. Klicka på värden för att redigera.
       </p>
 
-      <div className="relative overflow-x-auto">
+      <div className="relative overflow-auto max-h-[600px]">
         <Table>
           <TableHeader>
             <TableRow className="bg-background">
-              <TableHead className="w-[50px]"></TableHead>
-              <TableHead className="w-[250px]">Område/Konto</TableHead>
-              <TableHead className="w-[100px]">Typ</TableHead>
+              <TableHead className="w-[50px] sticky top-0 left-0 z-50 bg-background border-b"></TableHead>
+              <TableHead className="w-[250px] sticky top-0 left-[50px] z-50 bg-background border-b border-r">Område/Konto</TableHead>
+              <TableHead className="w-[100px] sticky top-0 left-[300px] z-50 bg-background border-b border-r">Typ</TableHead>
               {months.map((month) => (
-                <TableHead key={month} className="text-right min-w-[120px]">
+                <TableHead key={month} className="text-right min-w-[120px] sticky top-0 z-40 bg-background border-b">
                   {month}
                 </TableHead>
               ))}
-              <TableHead className="text-right min-w-[140px]">Totalt</TableHead>
+              <TableHead className="text-right min-w-[140px] sticky top-0 z-40 bg-background border-b">Totalt</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -278,7 +278,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate, company }: Busines
               <Fragment key={area.name}>
                 {/* Area Revenue Row */}
                 <TableRow className="font-medium hover:bg-muted/50">
-                  <TableCell rowSpan={3}>
+                  <TableCell rowSpan={3} className="sticky left-0 z-30 bg-background">
                     {area.accounts && area.accounts.length > 0 && (
                       <Button
                         variant="ghost"
@@ -294,8 +294,8 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate, company }: Busines
                       </Button>
                     )}
                   </TableCell>
-                  <TableCell className="font-semibold">{area.name}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">Intäkt</TableCell>
+                  <TableCell className="font-semibold sticky left-[50px] z-30 bg-background border-r">{area.name}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground sticky left-[300px] z-30 bg-background border-r">Intäkt</TableCell>
                   {area.monthlyData.map((data) => (
                     <TableCell key={data.month} className="text-right">
                       {editingArea === area.name && editingMonth === data.month && editType === 'revenue' && !editingAccount ? (
@@ -367,8 +367,8 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate, company }: Busines
 
                 {/* Area Margin Row */}
                 <TableRow className="hover:bg-muted/50">
-                  <TableCell className="font-semibold"></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">BV%</TableCell>
+                  <TableCell className="font-semibold sticky left-[50px] z-30 bg-background border-r"></TableCell>
+                  <TableCell className="text-sm text-muted-foreground sticky left-[300px] z-30 bg-background border-r">BV%</TableCell>
                   {area.monthlyData.map((data) => (
                     <TableCell key={data.month} className="text-right">
                       {editingArea === area.name && editingMonth === data.month && editType === 'margin' ? (
@@ -439,8 +439,8 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate, company }: Busines
 
                 {/* Area Gross Profit Row */}
                 <TableRow className="border-b-2 hover:bg-muted/50">
-                  <TableCell className="font-semibold"></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">Bruttovinst</TableCell>
+                  <TableCell className="font-semibold sticky left-[50px] z-30 bg-background border-r"></TableCell>
+                  <TableCell className="text-sm text-muted-foreground sticky left-[300px] z-30 bg-background border-r">Bruttovinst</TableCell>
                   {area.monthlyData.map((data) => (
                     <TableCell key={data.month} className="text-right text-success">
                       {formatCurrency(data.grossProfit)}
@@ -454,11 +454,11 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate, company }: Busines
                 {/* Account Detail Rows */}
                 {expandedAreas.has(area.name) && area.accounts && area.accounts.map((account) => (
                   <TableRow key={`${area.name}-${account.accountNumber}`} className="bg-muted/30">
-                    <TableCell></TableCell>
-                    <TableCell className="pl-8 text-sm">
+                    <TableCell className="sticky left-0 z-30 bg-muted"></TableCell>
+                    <TableCell className="pl-8 text-sm sticky left-[50px] z-30 bg-muted border-r">
                       <span className="text-muted-foreground">{account.accountNumber}</span> - {account.name}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">Konto</TableCell>
+                    <TableCell className="text-sm text-muted-foreground sticky left-[300px] z-30 bg-muted border-r">Konto</TableCell>
                     {account.monthlyData.map((data) => (
                       <TableCell key={data.month} className="text-right">
                         {editingArea === area.name && editingAccount === account.accountNumber && editingMonth === data.month ? (
