@@ -73,9 +73,16 @@ export const VersionHistory = ({ company, onRestore }: VersionHistoryProps) => {
                 <Card key={version.id} className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                      <p className="text-sm font-medium">
-                        {formatDate(version.created_at)}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">
+                          {formatDate(version.created_at)}
+                        </p>
+                        {version.user_email && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                            {version.user_email}
+                          </span>
+                        )}
+                      </div>
                       {version.version_note && (
                         <p className="text-xs text-muted-foreground">
                           {version.version_note}

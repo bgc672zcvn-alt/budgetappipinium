@@ -10,6 +10,7 @@ interface BudgetVersion {
   created_by: string;
   created_at: string;
   version_note?: string;
+  user_email?: string;
 }
 
 export const useBudgetHistory = () => {
@@ -48,6 +49,7 @@ export const useBudgetHistory = () => {
         data: data as any,
         created_by: user.id,
         version_note: note,
+        user_email: user.email,
       });
 
       if (error) throw error;

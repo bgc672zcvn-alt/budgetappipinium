@@ -48,6 +48,7 @@ export type Database = {
           created_by: string
           data: Json
           id: string
+          user_email: string | null
           version_note: string | null
         }
         Insert: {
@@ -56,6 +57,7 @@ export type Database = {
           created_by: string
           data: Json
           id?: string
+          user_email?: string | null
           version_note?: string | null
         }
         Update: {
@@ -64,6 +66,7 @@ export type Database = {
           created_by?: string
           data?: Json
           id?: string
+          user_email?: string | null
           version_note?: string | null
         }
         Relationships: []

@@ -260,6 +260,92 @@ export const BudgetDashboard = () => {
     loadBudgets();
   }, [selectedYear]);
 
+  // Realtime subscription for collaborative editing
+  useEffect(() => {
+    const channel = supabase
+      .channel('budget-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'budget_data',
+          filter: `year=eq.${selectedYear}`
+        },
+        (payload) => {
+          console.log('Budget data changed:', payload);
+          // Reload budgets when any change is detected
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            // Small delay to ensure consistency
+            setTimeout(() => {
+              const loadUpdatedBudgets = async () => {
+                try {
+                  const { data, error } = await supabase
+                    .from('budget_data')
+                    .select('*')
+                    .eq('year', selectedYear);
+
+                  if (error) throw error;
+
+                  if (data && data.length > 0) {
+                    const loaded: Record<string, BudgetData> = {};
+                    data.forEach((row) => {
+                      loaded[row.company.toLowerCase()] = row.data as unknown as BudgetData;
+                    });
+
+                    const ipBase = loaded['ipinium ab']
+                      ? {
+                          ...ipiniumBudget,
+                          monthlyData: (loaded['ipinium ab'] as BudgetData).monthlyData || ipiniumBudget.monthlyData,
+                          businessAreas: (loaded['ipinium ab'] as BudgetData).businessAreas || ipiniumBudget.businessAreas,
+                          costCategories: (loaded['ipinium ab'] as BudgetData).costCategories || ipiniumBudget.costCategories,
+                          company: 'Ipinium AB',
+                        }
+                      : ipiniumBudget;
+
+                    const ip = ipBase;
+
+                    const op = loaded['onepan']
+                      ? {
+                          ...onepanBudget,
+                          monthlyData: (loaded['onepan'] as BudgetData).monthlyData || onepanBudget.monthlyData,
+                          businessAreas: (loaded['onepan'] as BudgetData).businessAreas || onepanBudget.businessAreas,
+                          costCategories: (loaded['onepan'] as BudgetData).costCategories || onepanBudget.costCategories,
+                          company: 'OnePan',
+                        }
+                      : onepanBudget;
+
+                    const nip = recomputeFromAreas(normalizeTotals(ip));
+                    const nop = recomputeFromAreas(normalizeTotals(op));
+
+                    setBudgetData({
+                      ipinium: nip,
+                      onepan: nop,
+                      combined: computeCombined(nip, nop),
+                    });
+
+                    toast({
+                      title: "Uppdatering",
+                      description: "Budgeten har uppdaterats av en annan användare",
+                    });
+                  }
+                } catch (error) {
+                  console.error('Error loading realtime updates:', error);
+                }
+              };
+              loadUpdatedBudgets();
+            }, 500);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedYear, toast]);
+
+
   // Spara ändringar till backend
   useEffect(() => {
     if (isLoading) return;
