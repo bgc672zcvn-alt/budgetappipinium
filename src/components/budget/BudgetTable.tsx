@@ -135,7 +135,7 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
           </Select>
         </div>
       </div>
-      <div className="relative overflow-auto max-h-[600px]">
+      <div className="relative">
         <Table>
           <TableHeader>
             <TableRow className="bg-background">

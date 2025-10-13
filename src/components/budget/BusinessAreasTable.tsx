@@ -258,7 +258,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate, company }: Busines
         Klicka på pilen för att expandera till kontonivå. Klicka på värden för att redigera.
       </p>
 
-      <div className="relative overflow-auto max-h-[600px]">
+      <div className="relative">
         <Table>
           <TableHeader>
             <TableRow className="bg-background">
@@ -278,7 +278,7 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate, company }: Busines
               <Fragment key={area.name}>
                 {/* Area Revenue Row */}
                 <TableRow className="font-medium hover:bg-muted/50">
-                  <TableCell rowSpan={3} className="sticky left-0 z-30 bg-background">
+                  <TableCell rowSpan={3} className="sticky left-0 z-30 bg-background w-[50px] min-w-[50px] max-w-[50px]">
                     {area.accounts && area.accounts.length > 0 && (
                       <Button
                         variant="ghost"
@@ -294,8 +294,8 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate, company }: Busines
                       </Button>
                     )}
                   </TableCell>
-                  <TableCell className="font-semibold sticky left-[50px] z-30 bg-background border-r">{area.name}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground sticky left-[300px] z-30 bg-background border-r">Intäkt</TableCell>
+                  <TableCell className="font-semibold sticky left-[50px] z-30 bg-background border-r w-[250px] min-w-[250px] max-w-[250px]">{area.name}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground sticky left-[300px] z-30 bg-background border-r w-[100px] min-w-[100px] max-w-[100px]">Intäkt</TableCell>
                   {area.monthlyData.map((data) => (
                     <TableCell key={data.month} className="text-right">
                       {editingArea === area.name && editingMonth === data.month && editType === 'revenue' && !editingAccount ? (
@@ -367,8 +367,8 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate, company }: Busines
 
                 {/* Area Margin Row */}
                 <TableRow className="hover:bg-muted/50">
-                  <TableCell className="font-semibold sticky left-[50px] z-30 bg-background border-r"></TableCell>
-                  <TableCell className="text-sm text-muted-foreground sticky left-[300px] z-30 bg-background border-r">BV%</TableCell>
+                  <TableCell className="font-semibold sticky left-[50px] z-30 bg-background border-r w-[250px] min-w-[250px] max-w-[250px]"></TableCell>
+                  <TableCell className="text-sm text-muted-foreground sticky left-[300px] z-30 bg-background border-r w-[100px] min-w-[100px] max-w-[100px]">BV%</TableCell>
                   {area.monthlyData.map((data) => (
                     <TableCell key={data.month} className="text-right">
                       {editingArea === area.name && editingMonth === data.month && editType === 'margin' ? (
@@ -454,11 +454,11 @@ export const BusinessAreasTable = ({ businessAreas, onUpdate, company }: Busines
                 {/* Account Detail Rows */}
                 {expandedAreas.has(area.name) && area.accounts && area.accounts.map((account) => (
                   <TableRow key={`${area.name}-${account.accountNumber}`} className="bg-muted/30">
-                    <TableCell className="sticky left-0 z-30 bg-muted"></TableCell>
-                    <TableCell className="pl-8 text-sm sticky left-[50px] z-30 bg-muted border-r">
+                    <TableCell className="sticky left-0 z-30 bg-muted w-[50px] min-w-[50px] max-w-[50px]"></TableCell>
+                    <TableCell className="pl-8 text-sm sticky left-[50px] z-30 bg-muted border-r w-[250px] min-w-[250px] max-w-[250px]">
                       <span className="text-muted-foreground">{account.accountNumber}</span> - {account.name}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground sticky left-[300px] z-30 bg-muted border-r">Konto</TableCell>
+                    <TableCell className="text-sm text-muted-foreground sticky left-[300px] z-30 bg-muted border-r w-[100px] min-w-[100px] max-w-[100px]">Konto</TableCell>
                     {account.monthlyData.map((data) => (
                       <TableCell key={data.month} className="text-right">
                         {editingArea === area.name && editingAccount === account.accountNumber && editingMonth === data.month ? (
