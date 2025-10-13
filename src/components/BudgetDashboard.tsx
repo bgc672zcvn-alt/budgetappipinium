@@ -574,9 +574,17 @@ export const BudgetDashboard = () => {
         <div className="space-y-4 mb-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-8">
-              <img src={ipiniumLogo} alt="Ipinium" className="h-12 object-contain" />
-              <div className="text-muted-foreground text-3xl font-light">&</div>
-              <img src={onepanLogo} alt="OnePan" className="h-12 object-contain" />
+              {view === "combined" ? (
+                <>
+                  <img src={ipiniumLogo} alt="Ipinium" className="h-12 object-contain" />
+                  <div className="text-muted-foreground text-3xl font-light">&</div>
+                  <img src={onepanLogo} alt="OnePan" className="h-12 object-contain" />
+                </>
+              ) : view === "onepan" ? (
+                <img src={onepanLogo} alt="OnePan" className="h-12 object-contain" />
+              ) : (
+                <img src={ipiniumLogo} alt="Ipinium" className="h-12 object-contain" />
+              )}
             </div>
             <div className="flex items-center gap-2">
                 <NewBudgetYearDialog 
