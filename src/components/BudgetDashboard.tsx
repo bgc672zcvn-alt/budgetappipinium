@@ -71,6 +71,35 @@ const rebalanceToTarget = (b: BudgetData): BudgetData => {
   return normalizeTotals({ ...b, monthlyData });
 };
 
+// Recompute monthly figures from business areas (single source of truth)
+const recomputeFromAreas = (b: BudgetData): BudgetData => {
+  if (!b.businessAreas || b.businessAreas.length === 0) return normalizeTotals(b);
+  const norm = (s: string) => s.trim().toLowerCase().slice(0, 3);
+  const monthlyData = b.monthlyData.map((m) => {
+    const key = norm(m.month);
+    let sumRevenue = 0;
+    let sumGrossProfit = 0;
+    b.businessAreas!.forEach(area => {
+      const d = area.monthlyData.find(x => norm(x.month) === key);
+      if (d) {
+        sumRevenue += d.revenue ?? 0;
+        sumGrossProfit += d.grossProfit ?? Math.round((d.revenue ?? 0) * ((d.contributionMargin ?? 0) / 100));
+      }
+    });
+    const revenue = Math.round(sumRevenue);
+    const grossProfit = Math.round(sumGrossProfit);
+    const cogs = Math.max(0, revenue - grossProfit);
+    const grossMargin = revenue > 0 ? Math.round((grossProfit / revenue) * 1000) / 10 : 0;
+    const { personnel, marketing, office, otherOpex, depreciation, financialCosts } = m;
+    const totalOpex = personnel + marketing + office + otherOpex;
+    const ebit = grossProfit - totalOpex - depreciation;
+    const ebitMargin = revenue > 0 ? Math.round((ebit / revenue) * 1000) / 10 : 0;
+    const resultAfterFinancial = ebit + financialCosts;
+    return { ...m, revenue, cogs, grossProfit, grossMargin, totalOpex, ebit, ebitMargin, resultAfterFinancial };
+  });
+  return normalizeTotals({ ...b, monthlyData });
+};
+
 const computeCombined = (ip: BudgetData, op: BudgetData): BudgetData => {
   const combinedMonthly = ip.monthlyData.map((im, idx) => {
     const om = op.monthlyData[idx];
@@ -212,8 +241,8 @@ export const BudgetDashboard = () => {
               }
             : onepanBudget;
 
-          const nip = normalizeTotals(ip);
-          const nop = normalizeTotals(op);
+          const nip = recomputeFromAreas(normalizeTotals(ip));
+          const nop = recomputeFromAreas(normalizeTotals(op));
 
           setBudgetData({
             ipinium: nip,
