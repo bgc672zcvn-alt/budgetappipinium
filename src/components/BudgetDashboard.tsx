@@ -241,8 +241,8 @@ export const BudgetDashboard = () => {
               }
             : onepanBudget;
 
-          const nip = recomputeFromAreas(normalizeTotals(ip));
-          const nop = recomputeFromAreas(normalizeTotals(op));
+          const nip = normalizeTotals(ip);
+          const nop = normalizeTotals(op);
 
           setBudgetData({
             ipinium: nip,
@@ -315,8 +315,8 @@ export const BudgetDashboard = () => {
                         }
                       : onepanBudget;
 
-                    const nip = recomputeFromAreas(normalizeTotals(ip));
-                    const nop = recomputeFromAreas(normalizeTotals(op));
+                    const nip = normalizeTotals(ip);
+                    const nop = normalizeTotals(op);
 
                     setBudgetData({
                       ipinium: nip,
