@@ -204,8 +204,8 @@ export const BudgetDashboard = () => {
               }
             : onepanBudget;
 
-          const nip = rebalanceToTarget(normalizeTotals(ip));
-          const nop = rebalanceToTarget(normalizeTotals(op));
+          const nip = normalizeTotals(ip);
+          const nop = normalizeTotals(op);
 
           setBudgetData({
             ipinium: nip,
