@@ -10,6 +10,7 @@ import { BusinessAreasTable } from "./budget/BusinessAreasTable";
 import { ExpandableCostsTable } from "./budget/ExpandableCostsTable";
 import { VersionHistory } from "./budget/VersionHistory";
 import { NewBudgetYearDialog } from "./budget/NewBudgetYearDialog";
+import { BudgetExport } from "./budget/BudgetExport";
 import { ipiniumBudget, onepanBudget } from "@/data/budgetData";
 import { BudgetData } from "@/types/budget";
 import { supabase } from "@/integrations/supabase/client";
@@ -605,6 +606,7 @@ export const BudgetDashboard = () => {
                 <Undo2 className="h-4 w-4 mr-2" />
                 Ångra
               </Button>
+              <BudgetExport budgetData={budget} year={selectedYear} />
               <VersionHistory company={view === "combined" ? "Ipinium AB" : budget.company} onRestore={handleRestoreVersion} />
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
