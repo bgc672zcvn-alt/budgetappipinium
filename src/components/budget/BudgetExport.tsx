@@ -28,9 +28,10 @@ export const BudgetExport = ({ ipiniumData, onepanData, combinedData, year }: Bu
   const { toast } = useToast();
 
   const formatNumber = (value: number) => {
-    return Math.round(value).toLocaleString('sv-SE');
+    const s = Math.round(value).toLocaleString('sv-SE');
+    // Normalize special spaces/minus that can render as quotes in PDFs
+    return s.replace(/\u00A0|\u202F/g, ' ').replace(/\u2212/g, '-');
   };
-
   const addCompanySection = (doc: jsPDF, budgetData: BudgetData, startY: number, title: string) => {
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
