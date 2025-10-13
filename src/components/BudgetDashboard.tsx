@@ -221,11 +221,10 @@ export const BudgetDashboard = () => {
             loaded[row.company.toLowerCase()] = row.data as unknown as BudgetData;
           });
 
-          // Use saved backend data when available, local data as fallback
+          // Build candidates from backend
           const ipBase = loaded['ipinium ab']
             ? {
                 ...ipiniumBudget,
-                // Only use the monthlyData, businessAreas, and costCategories from backend
                 monthlyData: (loaded['ipinium ab'] as BudgetData).monthlyData || ipiniumBudget.monthlyData,
                 businessAreas: (loaded['ipinium ab'] as BudgetData).businessAreas || ipiniumBudget.businessAreas,
                 costCategories: (loaded['ipinium ab'] as BudgetData).costCategories || ipiniumBudget.costCategories,
@@ -233,12 +232,9 @@ export const BudgetDashboard = () => {
               }
             : ipiniumBudget;
 
-          const ip = ipBase;
-
-          const op = loaded['onepan']
+          const opBase = loaded['onepan']
             ? {
                 ...onepanBudget,
-                // Only use the monthlyData, businessAreas, and costCategories from backend
                 monthlyData: (loaded['onepan'] as BudgetData).monthlyData || onepanBudget.monthlyData,
                 businessAreas: (loaded['onepan'] as BudgetData).businessAreas || onepanBudget.businessAreas,
                 costCategories: (loaded['onepan'] as BudgetData).costCategories || onepanBudget.costCategories,
@@ -246,16 +242,66 @@ export const BudgetDashboard = () => {
               }
             : onepanBudget;
 
-          const nip = normalizeTotals(ip);
-          const nop = normalizeTotals(op);
+          const nip = normalizeTotals(ipBase);
+          const nop = normalizeTotals(opBase);
 
-          // Mark that this update came from remote load to avoid save loop
-          skipNextSaveRef.current = true;
-          setBudgetData({
-            ipinium: nip,
-            onepan: nop,
-            combined: computeCombined(nip, nop),
-          });
+          // Heuristic: if server data differs >5% from current local state, prefer local and immediately sync it to server
+          const localIpSum = sumRevenue(budgetData.ipinium.monthlyData);
+          const localOpSum = sumRevenue(budgetData.onepan.monthlyData);
+          const remoteIpSum = sumRevenue(nip.monthlyData);
+          const remoteOpSum = sumRevenue(nop.monthlyData);
+
+          const ipDiff = localIpSum === 0 ? 0 : Math.abs(remoteIpSum - localIpSum) / localIpSum;
+          const opDiff = localOpSum === 0 ? 0 : Math.abs(remoteOpSum - localOpSum) / localOpSum;
+
+          if (ipDiff > 0.05 || opDiff > 0.05) {
+            console.log('Serverdata avviker >5%, skriver upp lokal budget till server');
+            try {
+              savingRef.current = true;
+              await supabase
+                .from('budget_data')
+                .upsert([
+                  {
+                    company: 'Ipinium AB',
+                    year: selectedYear,
+                    data: { ...budgetData.ipinium, totalRevenue: undefined } as any,
+                  },
+                  {
+                    company: 'OnePan',
+                    year: selectedYear,
+                    data: { ...budgetData.onepan, totalRevenue: undefined } as any,
+                  },
+                ], { onConflict: 'company,year' });
+              lastSavedHashRef.current = JSON.stringify({
+                ip: budgetData.ipinium.monthlyData,
+                op: budgetData.onepan.monthlyData,
+                ipAreas: budgetData.ipinium.businessAreas,
+                opAreas: budgetData.onepan.businessAreas,
+                ipCosts: budgetData.ipinium.costCategories,
+                opCosts: budgetData.onepan.costCategories,
+                year: selectedYear,
+              });
+              skipNextSaveRef.current = true; // avoid immediate save loop
+              toast({ title: 'Synkad', description: 'Synkade servern till din aktuella budget.' });
+            } catch (e) {
+              console.error('Kunde inte synka lokal budget till server:', e);
+            } finally {
+              setIsLoading(false);
+              setBudgetData((prev) => ({
+                ...prev,
+                combined: computeCombined(prev.ipinium, prev.onepan),
+              }));
+              setTimeout(() => (savingRef.current = false), 600);
+            }
+          } else {
+            // Apply backend data normally
+            skipNextSaveRef.current = true;
+            setBudgetData({
+              ipinium: nip,
+              onepan: nop,
+              combined: computeCombined(nip, nop),
+            });
+          }
         }
       } catch (error) {
         console.error('Fel vid laddning av budget:', error);
@@ -316,9 +362,7 @@ export const BudgetDashboard = () => {
                         }
                       : ipiniumBudget;
 
-                    const ip = ipBase;
-
-                    const op = loaded['onepan']
+                    const opBase = loaded['onepan']
                       ? {
                           ...onepanBudget,
                           monthlyData: (loaded['onepan'] as BudgetData).monthlyData || onepanBudget.monthlyData,
@@ -328,10 +372,23 @@ export const BudgetDashboard = () => {
                         }
                       : onepanBudget;
 
-                    const nip = normalizeTotals(ip);
-                    const nop = normalizeTotals(op);
+                    const nip = normalizeTotals(ipBase);
+                    const nop = normalizeTotals(opBase);
 
-                    // Mark that this update came from realtime to avoid save loop
+                    const localIpSum = sumRevenue(budgetData.ipinium.monthlyData);
+                    const localOpSum = sumRevenue(budgetData.onepan.monthlyData);
+                    const remoteIpSum = sumRevenue(nip.monthlyData);
+                    const remoteOpSum = sumRevenue(nop.monthlyData);
+
+                    const ipDiff = localIpSum === 0 ? 0 : Math.abs(remoteIpSum - localIpSum) / localIpSum;
+                    const opDiff = localOpSum === 0 ? 0 : Math.abs(remoteOpSum - localOpSum) / localOpSum;
+
+                    const remoteLower = (remoteIpSum < localIpSum && ipDiff > 0.05) || (remoteOpSum < localOpSum && opDiff > 0.05);
+                    if (remoteLower) {
+                      console.log('Ignorerar realtime som minskar totals >5% jämfört med lokal');
+                      return;
+                    }
+
                     skipNextSaveRef.current = true;
                     setBudgetData({
                       ipinium: nip,
