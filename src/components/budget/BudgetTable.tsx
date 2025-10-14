@@ -120,9 +120,6 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
           Månadsuppdelning
         </h2>
         <div className="flex items-center gap-3">
-          <div className="text-sm text-muted-foreground">
-            Jämförelseår: <span className="font-medium">{selectedYear - 1}</span>
-          </div>
           <Select value={String(targetYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Välj år" />
