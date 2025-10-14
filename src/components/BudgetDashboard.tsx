@@ -136,11 +136,21 @@ const computeCombined = (ip: BudgetData, op: BudgetData): BudgetData => {
     };
   });
 
+  const totalRevenue = sumRevenue(combinedMonthly);
+  const targetRevenue = ip.targetRevenue + op.targetRevenue;
+  
+  // Calculate combined growth rate
+  let growthRate = "0%";
+  if (targetRevenue > 0 && totalRevenue > 0) {
+    const growthPercent = Math.round(((targetRevenue - totalRevenue) / totalRevenue) * 100);
+    growthRate = `${growthPercent >= 0 ? '+' : ''}${growthPercent}%`;
+  }
+
   return {
     company: "Combined",
-    totalRevenue: sumRevenue(combinedMonthly),
-    targetRevenue: ip.targetRevenue + op.targetRevenue,
-    growthRate: "+",
+    totalRevenue,
+    targetRevenue,
+    growthRate,
     monthlyData: combinedMonthly,
   };
 };
@@ -228,6 +238,9 @@ export const BudgetDashboard = () => {
                 monthlyData: (loaded['ipinium ab'] as BudgetData).monthlyData || ipiniumBudget.monthlyData,
                 businessAreas: (loaded['ipinium ab'] as BudgetData).businessAreas || ipiniumBudget.businessAreas,
                 costCategories: (loaded['ipinium ab'] as BudgetData).costCategories || ipiniumBudget.costCategories,
+                growthRate: (loaded['ipinium ab'] as BudgetData).growthRate || ipiniumBudget.growthRate,
+                targetRevenue: (loaded['ipinium ab'] as BudgetData).targetRevenue || ipiniumBudget.targetRevenue,
+                totalRevenue: (loaded['ipinium ab'] as BudgetData).totalRevenue || ipiniumBudget.totalRevenue,
                 company: 'Ipinium AB',
               }
             : ipiniumBudget;
@@ -238,6 +251,9 @@ export const BudgetDashboard = () => {
                 monthlyData: (loaded['onepan'] as BudgetData).monthlyData || onepanBudget.monthlyData,
                 businessAreas: (loaded['onepan'] as BudgetData).businessAreas || onepanBudget.businessAreas,
                 costCategories: (loaded['onepan'] as BudgetData).costCategories || onepanBudget.costCategories,
+                growthRate: (loaded['onepan'] as BudgetData).growthRate || onepanBudget.growthRate,
+                targetRevenue: (loaded['onepan'] as BudgetData).targetRevenue || onepanBudget.targetRevenue,
+                totalRevenue: (loaded['onepan'] as BudgetData).totalRevenue || onepanBudget.totalRevenue,
                 company: 'OnePan',
               }
             : onepanBudget;
@@ -308,6 +324,9 @@ export const BudgetDashboard = () => {
                           monthlyData: (loaded['ipinium ab'] as BudgetData).monthlyData || ipiniumBudget.monthlyData,
                           businessAreas: (loaded['ipinium ab'] as BudgetData).businessAreas || ipiniumBudget.businessAreas,
                           costCategories: (loaded['ipinium ab'] as BudgetData).costCategories || ipiniumBudget.costCategories,
+                          growthRate: (loaded['ipinium ab'] as BudgetData).growthRate || ipiniumBudget.growthRate,
+                          targetRevenue: (loaded['ipinium ab'] as BudgetData).targetRevenue || ipiniumBudget.targetRevenue,
+                          totalRevenue: (loaded['ipinium ab'] as BudgetData).totalRevenue || ipiniumBudget.totalRevenue,
                           company: 'Ipinium AB',
                         }
                       : ipiniumBudget;
@@ -318,6 +337,9 @@ export const BudgetDashboard = () => {
                           monthlyData: (loaded['onepan'] as BudgetData).monthlyData || onepanBudget.monthlyData,
                           businessAreas: (loaded['onepan'] as BudgetData).businessAreas || onepanBudget.businessAreas,
                           costCategories: (loaded['onepan'] as BudgetData).costCategories || onepanBudget.costCategories,
+                          growthRate: (loaded['onepan'] as BudgetData).growthRate || onepanBudget.growthRate,
+                          targetRevenue: (loaded['onepan'] as BudgetData).targetRevenue || onepanBudget.targetRevenue,
+                          totalRevenue: (loaded['onepan'] as BudgetData).totalRevenue || onepanBudget.totalRevenue,
                           company: 'OnePan',
                         }
                       : onepanBudget;
