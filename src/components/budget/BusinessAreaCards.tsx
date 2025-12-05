@@ -1,15 +1,19 @@
 import { Card } from "@/components/ui/card";
 import { BusinessArea } from "@/types/budget";
 import { TrendingUp, DollarSign } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface BusinessAreaCardsProps {
   businessAreas?: BusinessArea[];
+  budgetYear?: number;
 }
 
-export const BusinessAreaCards = ({ businessAreas }: BusinessAreaCardsProps) => {
+export const BusinessAreaCards = ({ businessAreas, budgetYear }: BusinessAreaCardsProps) => {
   if (!businessAreas || businessAreas.length === 0) {
     return null;
   }
+
+  const displayYear = budgetYear || new Date().getFullYear();
 
   const formatCurrency = (num: number) => {
     return new Intl.NumberFormat("sv-SE", {
@@ -37,60 +41,66 @@ export const BusinessAreaCards = ({ businessAreas }: BusinessAreaCardsProps) => 
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
-      {businessAreas.map((area) => {
-        const totals = calculateAreaTotals(area);
-        
-        return (
-          <Card key={area.name} className="p-6 hover:shadow-lg transition-shadow">
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold text-foreground mb-1">
-                  {area.name}
-                </h3>
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <h3 className="text-lg font-semibold">Affärsområden</h3>
+        <Badge variant="outline" className="text-xs">Budget {displayYear}</Badge>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {businessAreas.map((area) => {
+          const totals = calculateAreaTotals(area);
+          
+          return (
+            <Card key={area.name} className="p-6 hover:shadow-lg transition-shadow">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-1">
+                    {area.name}
+                  </h3>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Omsättning</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-foreground">
+                        {formatCurrency(totals.totalRevenue)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Bruttoresultat</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-foreground">
+                        {formatCurrency(totals.totalGrossProfit)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {totals.grossProfitMargin.toFixed(1)}% margin
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-border">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Täckningsbidrag</span>
+                      <span className="font-semibold text-primary">
+                        {totals.avgContributionMargin.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
-
-              <div className="space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Revenue</span>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold text-foreground">
-                      {formatCurrency(totals.totalRevenue)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Gross Profit</span>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold text-foreground">
-                      {formatCurrency(totals.totalGrossProfit)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {totals.grossProfitMargin.toFixed(1)}% margin
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-border">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Contribution Margin</span>
-                    <span className="font-semibold text-primary">
-                      {totals.avgContributionMargin.toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Card>
-        );
-      })}
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 };
