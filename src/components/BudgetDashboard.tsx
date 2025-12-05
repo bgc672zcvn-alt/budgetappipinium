@@ -873,7 +873,7 @@ export const BudgetDashboard = () => {
             )}
 
             {/* Table */}
-            <BudgetTable budget={budget} viewName={view === "combined" ? "Combined" : budget.company} />
+            <BudgetTable budget={budget} viewName={view === "combined" ? "Combined" : budget.company} budgetYear={selectedYear} />
           </TabsContent>
         </Tabs>
       </div>
