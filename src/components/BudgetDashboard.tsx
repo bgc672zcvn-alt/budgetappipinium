@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useBudgetHistory } from "@/hooks/useBudgetHistory";
 import { LogOut, Undo2 } from "lucide-react";
+import { AdminPanel } from "./AdminPanel";
 import type { User } from "@supabase/supabase-js";
 import ipiniumLogo from "@/assets/ipinium-logo.jpg";
 import onepanLogo from "@/assets/onepan-logo.png";
@@ -757,7 +758,8 @@ export const BudgetDashboard = () => {
               )}
             </div>
             <div className="flex items-center gap-2">
-                <NewBudgetYearDialog 
+              <AdminPanel />
+                <NewBudgetYearDialog
                   company={budget.company}
                   onBudgetCreated={(year, newBudget) => {
                     setSelectedYear(year);
