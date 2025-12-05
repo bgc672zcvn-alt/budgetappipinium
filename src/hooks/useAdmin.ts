@@ -109,29 +109,20 @@ export const useAdmin = () => {
 
   const setUserRole = async (userId: string, role: 'admin' | 'user'): Promise<boolean> => {
     try {
-      // Check if role exists
-      const { data: existing } = await supabase
+      // Delete all existing roles for this user first (avoid duplicates)
+      const { error: deleteError } = await supabase
         .from('user_roles')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle();
+        .delete()
+        .eq('user_id', userId);
 
-      if (existing) {
-        // Update existing role
-        const { error } = await supabase
-          .from('user_roles')
-          .update({ role })
-          .eq('user_id', userId);
+      if (deleteError) throw deleteError;
 
-        if (error) throw error;
-      } else {
-        // Insert new role
-        const { error } = await supabase
-          .from('user_roles')
-          .insert({ user_id: userId, role });
+      // Insert the new role
+      const { error: insertError } = await supabase
+        .from('user_roles')
+        .insert({ user_id: userId, role });
 
-        if (error) throw error;
-      }
+      if (insertError) throw insertError;
 
       return true;
     } catch (err) {
