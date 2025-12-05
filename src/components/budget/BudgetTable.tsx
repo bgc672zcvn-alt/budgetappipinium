@@ -17,9 +17,10 @@ import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 interface BudgetTableProps {
   budget: BudgetData;
   viewName?: string;
+  budgetYear?: number;
 }
 
-export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
+export const BudgetTable = ({ budget, viewName, budgetYear }: BudgetTableProps) => {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = React.useState<number>(currentYear);
   
@@ -113,23 +114,49 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
     return "text-destructive";
   };
 
+  // Get the budget year from props or default to current year
+  const displayBudgetYear = budgetYear || new Date().getFullYear();
+
   return (
     <Card>
-      <div className="p-6 flex items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold text-foreground">
-          Månadsuppdelning
-        </h2>
-        <div className="flex items-center gap-3">
-          <Select value={String(targetYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Välj år" />
-            </SelectTrigger>
-            <SelectContent>
-              {(availableYears?.length ? availableYears : [currentYear, currentYear - 1]).map((y) => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="p-6 space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-xl font-semibold text-foreground">
+            Månadsuppdelning
+          </h2>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Jämför med utfall:</span>
+            <Select value={String(targetYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Välj år" />
+              </SelectTrigger>
+              <SelectContent>
+                {(availableYears?.length ? availableYears : [currentYear, currentYear - 1]).map((y) => (
+                  <SelectItem key={y} value={String(y)}>Utfall {y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        
+        {/* Legend */}
+        <div className="flex flex-wrap items-center gap-4 text-sm border rounded-lg px-4 py-2 bg-muted/30">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-foreground" />
+            <span>Budget {displayBudgetYear}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-muted-foreground/50" />
+            <span className="text-muted-foreground">Utfall {targetYear}</span>
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <TrendingUp className="h-3 w-3 text-success" />
+            <span className="text-muted-foreground">Ökning vs utfall</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <TrendingDown className="h-3 w-3 text-destructive" />
+            <span className="text-muted-foreground">Minskning vs utfall</span>
+          </div>
         </div>
       </div>
       <div className="relative">
@@ -360,9 +387,23 @@ export const BudgetTable = ({ budget, viewName }: BudgetTableProps) => {
                 </React.Fragment>
               );
             })}
+            {/* Summary row with explanation */}
+            <TableRow className="bg-muted/30 border-t">
+              <TableCell colSpan={15} className="py-2 px-4">
+                <div className="flex items-center gap-6 text-xs text-muted-foreground">
+                  <span className="font-medium">Förklaring per kolumn:</span>
+                  <span><strong>Rad 1:</strong> Budget {displayBudgetYear}</span>
+                  <span><strong>Rad 2:</strong> Utfall {targetYear}</span>
+                  <span><strong>Rad 3:</strong> Förändring Budget vs Utfall (%)</span>
+                </div>
+              </TableCell>
+            </TableRow>
             <TableRow className="bg-muted/50 font-bold border-t-2">
               <TableCell className="sticky left-0 bg-muted z-20">
-                Total (alla 12 månader{viewName ? ` – ${viewName}` : ''})
+                <div className="flex flex-col">
+                  <span>Total Budget {displayBudgetYear}</span>
+                  <span className="text-xs font-normal text-muted-foreground">vs Utfall {targetYear}</span>
+                </div>
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex flex-col items-end gap-1">
