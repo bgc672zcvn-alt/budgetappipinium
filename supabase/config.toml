@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.fortnox-status]
 verify_jwt = true
+
+[functions.sie-import]
+verify_jwt = true
+
+[functions.budget-api]
+verify_jwt = false
