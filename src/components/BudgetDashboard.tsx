@@ -839,7 +839,7 @@ export const BudgetDashboard = () => {
             )}
 
             {/* Metrics */}
-            <BudgetMetrics budget={budget} viewName={view === "combined" ? "Combined" : budget.company} />
+            <BudgetMetrics budget={budget} viewName={view === "combined" ? "Combined" : budget.company} year={selectedYear} />
 
             {/* Business Areas (only for Ipinium) */}
             {budget.businessAreas && (
