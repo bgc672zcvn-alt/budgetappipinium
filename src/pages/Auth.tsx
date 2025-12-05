@@ -93,7 +93,7 @@ const Auth = () => {
     }
   };
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent, retryCount = 0) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -108,16 +108,28 @@ const Auth = () => {
       });
 
       if (error) {
+        // Network errors - retry up to 2 times
+        if ((error.message.includes("fetch") || error.message.includes("Load failed") || error.message.includes("network")) && retryCount < 2) {
+          toast({
+            title: "Ansluter...",
+            description: `Försök ${retryCount + 2} av 3`,
+          });
+          setTimeout(() => {
+            handleSignIn(e, retryCount + 1);
+          }, 1000);
+          return;
+        }
+        
         if (error.message.includes("Invalid login credentials")) {
           toast({
             title: "Fel inloggningsuppgifter",
             description: "Kontrollera din e-post och lösenord.",
             variant: "destructive",
           });
-        } else if (error.message.includes("fetch")) {
+        } else if (error.message.includes("fetch") || error.message.includes("Load failed") || error.message.includes("network")) {
           toast({
             title: "Nätverksfel",
-            description: "Kunde inte ansluta till servern. Försök igen om en stund.",
+            description: "Kunde inte ansluta till servern. Ladda om sidan och försök igen.",
             variant: "destructive",
           });
         } else {
@@ -139,9 +151,10 @@ const Auth = () => {
         });
       } else {
         const errorMessage = error instanceof Error ? error.message : "Ett oväntat fel uppstod";
+        const isNetworkError = errorMessage.toLowerCase().includes("fetch") || errorMessage.toLowerCase().includes("load failed");
         toast({
           title: "Fel vid inloggning",
-          description: errorMessage.includes("fetch") ? "Nätverksfel - försök igen" : errorMessage,
+          description: isNetworkError ? "Nätverksfel - ladda om sidan och försök igen" : errorMessage,
           variant: "destructive",
         });
       }
