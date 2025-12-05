@@ -226,7 +226,7 @@ export const SieImportDialog = ({
                 onCheckedChange={(checked) => setCopyToBudget(checked === true)}
               />
               <div className="space-y-1">
-                <Label htmlFor="copyBudget" className="font-normal cursor-pointer text-base">
+                <Label htmlFor="copyBudget" className="font-normal cursor-pointer text-base font-semibold">
                   Kopiera till budget
                 </Label>
                 <p className="text-xs text-muted-foreground">
@@ -235,49 +235,50 @@ export const SieImportDialog = ({
               </div>
             </div>
 
-            {copyToBudget && (
-              <div className="space-y-4 pt-2">
-                {/* Target year selector */}
-                <div className="space-y-2">
-                  <Label htmlFor="targetYear" className="text-sm font-medium">
-                    Välj vilket år budgeten ska gälla för
-                  </Label>
-                  <Select value={targetYear} onValueChange={setTargetYear}>
-                    <SelectTrigger id="targetYear" className="w-full">
-                      <SelectValue placeholder="Välj målår" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {yearOptions.map((year) => (
-                        <SelectItem key={year} value={String(year)}>
-                          {year} {existingBudgetYears.includes(year) && '(budget finns redan)'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    SIE-filen är från {parsedData.sourceYear}. Du kan välja att kopiera till vilket år som helst.
+            {/* Always show options but disabled when copyToBudget is false */}
+            <div className={`space-y-4 pt-2 ${!copyToBudget ? 'opacity-50 pointer-events-none' : ''}`}>
+              {/* Target year selector */}
+              <div className="space-y-2">
+                <Label htmlFor="targetYear" className="text-sm font-medium">
+                  Välj vilket år budgeten ska gälla för
+                </Label>
+                <Select value={targetYear} onValueChange={setTargetYear} disabled={!copyToBudget}>
+                  <SelectTrigger id="targetYear" className="w-full">
+                    <SelectValue placeholder="Välj målår" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((year) => (
+                      <SelectItem key={year} value={String(year)}>
+                        {year} {existingBudgetYears.includes(year) && '(budget finns redan)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  SIE-filen är från {parsedData.sourceYear}. Du kan välja att kopiera till vilket år som helst.
+                </p>
+              </div>
+
+              {targetYearHasBudget && copyToBudget && (
+                <div className="flex items-start gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/20">
+                  <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    Det finns redan en budget för {targetYear}. Välj nedan vad som ska skrivas över.
                   </p>
                 </div>
+              )}
 
-                {targetYearHasBudget && (
-                  <div className="flex items-start gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/20">
-                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-amber-700 dark:text-amber-400">
-                      Det finns redan en budget för {targetYear}. Välj nedan vad som ska skrivas över.
-                    </p>
-                  </div>
-                )}
-
-                {/* Overwrite options */}
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium">Välj vilken data som ska importeras</Label>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-3">
-                      <Checkbox
-                        id="overwriteRevenue"
-                        checked={overwriteRevenue}
-                        onCheckedChange={(checked) => setOverwriteRevenue(checked === true)}
-                      />
+              {/* Overwrite options */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Välj vilken data som ska importeras till budgeten</Label>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="overwriteRevenue"
+                      checked={overwriteRevenue}
+                      onCheckedChange={(checked) => setOverwriteRevenue(checked === true)}
+                      disabled={!copyToBudget}
+                    />
                       <Label htmlFor="overwriteRevenue" className="font-normal cursor-pointer">
                         Intäkter (omsättning, varuinköp, bruttoresultat)
                       </Label>
@@ -287,6 +288,7 @@ export const SieImportDialog = ({
                         id="overwriteCosts"
                         checked={overwriteCosts}
                         onCheckedChange={(checked) => setOverwriteCosts(checked === true)}
+                        disabled={!copyToBudget}
                       />
                       <Label htmlFor="overwriteCosts" className="font-normal cursor-pointer">
                         Kostnader (personal, marknadsföring, lokaler, övrigt)
@@ -300,7 +302,6 @@ export const SieImportDialog = ({
                   )}
                 </div>
               </div>
-            )}
           </div>
         </div>
 
