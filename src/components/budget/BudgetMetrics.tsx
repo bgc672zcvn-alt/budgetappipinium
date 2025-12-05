@@ -13,9 +13,10 @@ import { Badge } from "@/components/ui/badge";
 interface BudgetMetricsProps {
   budget: BudgetData;
   viewName?: string;
+  year?: number;
 }
 
-export const BudgetMetrics = ({ budget, viewName }: BudgetMetricsProps) => {
+export const BudgetMetrics = ({ budget, viewName, year }: BudgetMetricsProps) => {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("sv-SE", {
       style: "currency",
@@ -37,7 +38,7 @@ export const BudgetMetrics = ({ budget, viewName }: BudgetMetricsProps) => {
 
   const metrics = [
     {
-      title: "Total Revenue 2026",
+      title: `Total Revenue ${year ?? new Date().getFullYear()}`,
       value: formatCurrency(totals.revenue),
       icon: DollarSign,
       color: "text-primary",
