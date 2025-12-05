@@ -198,10 +198,8 @@ export const SieImportDialog = ({
             </p>
           </div>
 
-          {/* Actions */}
-          <div className="space-y-4">
-            <h4 className="font-medium text-sm">Välj åtgärder</h4>
-
+          {/* Action 1: Save as historical */}
+          <div className="space-y-3">
             <div className="flex items-start space-x-3">
               <Checkbox
                 id="saveHistorical"
@@ -210,14 +208,17 @@ export const SieImportDialog = ({
               />
               <div className="space-y-1">
                 <Label htmlFor="saveHistorical" className="font-normal cursor-pointer">
-                  Spara som utfall (historisk data)
+                  Spara som utfall (historisk data för {parsedData.sourceYear})
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Sparar datan för {parsedData.sourceYear} som jämförelsetal
+                  Sparar datan som jämförelsetal i dashboarden
                 </p>
               </div>
             </div>
+          </div>
 
+          {/* Action 2: Copy to budget */}
+          <div className="space-y-4 rounded-lg border p-4">
             <div className="flex items-start space-x-3">
               <Checkbox
                 id="copyBudget"
@@ -225,69 +226,82 @@ export const SieImportDialog = ({
                 onCheckedChange={(checked) => setCopyToBudget(checked === true)}
               />
               <div className="space-y-1">
-                <Label htmlFor="copyBudget" className="font-normal cursor-pointer">
+                <Label htmlFor="copyBudget" className="font-normal cursor-pointer text-base">
                   Kopiera till budget
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Använd datan som grund för budget
+                  Använd SIE-datan som grund för en budget
                 </p>
               </div>
             </div>
-          </div>
 
-          {/* Target year and overwrite options (only if copyToBudget is checked) */}
-          {copyToBudget && (
-            <div className="space-y-4 pl-6 border-l-2 border-primary/20">
-              <div className="space-y-2">
-                <Label htmlFor="targetYear">Målår för budget</Label>
-                <Select value={targetYear} onValueChange={setTargetYear}>
-                  <SelectTrigger id="targetYear">
-                    <SelectValue placeholder="Välj år" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {yearOptions.map((year) => (
-                      <SelectItem key={year} value={String(year)}>
-                        {year} {existingBudgetYears.includes(year) && '(finns)'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {targetYearHasBudget && (
-                <div className="flex items-start gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/20">
-                  <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
-                    Det finns redan en budget för {targetYear}. Välj vad som ska skrivas över.
+            {copyToBudget && (
+              <div className="space-y-4 pt-2">
+                {/* Target year selector */}
+                <div className="space-y-2">
+                  <Label htmlFor="targetYear" className="text-sm font-medium">
+                    Välj vilket år budgeten ska gälla för
+                  </Label>
+                  <Select value={targetYear} onValueChange={setTargetYear}>
+                    <SelectTrigger id="targetYear" className="w-full">
+                      <SelectValue placeholder="Välj målår" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {yearOptions.map((year) => (
+                        <SelectItem key={year} value={String(year)}>
+                          {year} {existingBudgetYears.includes(year) && '(budget finns redan)'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    SIE-filen är från {parsedData.sourceYear}. Du kan välja att kopiera till vilket år som helst.
                   </p>
                 </div>
-              )}
 
-              <div className="space-y-3">
-                <Label className="text-sm">Skriv över</Label>
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="overwriteRevenue"
-                    checked={overwriteRevenue}
-                    onCheckedChange={(checked) => setOverwriteRevenue(checked === true)}
-                  />
-                  <Label htmlFor="overwriteRevenue" className="font-normal cursor-pointer">
-                    Intäkter (omsättning, varuinköp, bruttoresultat)
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="overwriteCosts"
-                    checked={overwriteCosts}
-                    onCheckedChange={(checked) => setOverwriteCosts(checked === true)}
-                  />
-                  <Label htmlFor="overwriteCosts" className="font-normal cursor-pointer">
-                    Kostnader (personal, marknadsföring, lokaler, övrigt)
-                  </Label>
+                {targetYearHasBudget && (
+                  <div className="flex items-start gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/20">
+                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      Det finns redan en budget för {targetYear}. Välj nedan vad som ska skrivas över.
+                    </p>
+                  </div>
+                )}
+
+                {/* Overwrite options */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Välj vilken data som ska importeras</Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id="overwriteRevenue"
+                        checked={overwriteRevenue}
+                        onCheckedChange={(checked) => setOverwriteRevenue(checked === true)}
+                      />
+                      <Label htmlFor="overwriteRevenue" className="font-normal cursor-pointer">
+                        Intäkter (omsättning, varuinköp, bruttoresultat)
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id="overwriteCosts"
+                        checked={overwriteCosts}
+                        onCheckedChange={(checked) => setOverwriteCosts(checked === true)}
+                      />
+                      <Label htmlFor="overwriteCosts" className="font-normal cursor-pointer">
+                        Kostnader (personal, marknadsföring, lokaler, övrigt)
+                      </Label>
+                    </div>
+                  </div>
+                  {!overwriteRevenue && !overwriteCosts && copyToBudget && (
+                    <p className="text-xs text-destructive">
+                      Välj minst ett alternativ för att kopiera till budget
+                    </p>
+                  )}
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <DialogFooter>
@@ -296,7 +310,7 @@ export const SieImportDialog = ({
           </Button>
           <Button
             onClick={handleImport}
-            disabled={isImporting || (!saveAsHistorical && !copyToBudget)}
+            disabled={isImporting || (!saveAsHistorical && !copyToBudget) || (copyToBudget && !overwriteRevenue && !overwriteCosts)}
           >
             {isImporting ? (
               <>
