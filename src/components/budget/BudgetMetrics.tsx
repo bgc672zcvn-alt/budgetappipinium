@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { TrendingUp, DollarSign, Percent, Target } from "lucide-react";
+import { TrendingUp, DollarSign, Percent, Target, Info } from "lucide-react";
 import { BudgetData } from "@/types/budget";
 import { getAnnualTotals } from "@/lib/budgetMath";
 import {
@@ -17,6 +17,8 @@ interface BudgetMetricsProps {
 }
 
 export const BudgetMetrics = ({ budget, viewName, year }: BudgetMetricsProps) => {
+  const displayYear = year ?? new Date().getFullYear();
+  
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("sv-SE", {
       style: "currency",
@@ -38,12 +40,12 @@ export const BudgetMetrics = ({ budget, viewName, year }: BudgetMetricsProps) =>
 
   const metrics = [
     {
-      title: `Total Revenue ${year ?? new Date().getFullYear()}`,
+      title: `Omsättning`,
       value: formatCurrency(totals.revenue),
       icon: DollarSign,
       color: "text-primary",
       showTooltip: true,
-      tooltipText: "Summan av 12 månaders revenue för aktuell vy"
+      tooltipText: "Summan av 12 månaders budgeterad omsättning"
     },
     {
       title: "EBIT",
@@ -53,14 +55,14 @@ export const BudgetMetrics = ({ budget, viewName, year }: BudgetMetricsProps) =>
       color: "text-accent",
     },
     {
-      title: "Result After Financial",
+      title: "Resultat efter finansiellt",
       value: formatCurrency(totals.resultAfterFinancial),
       subtitle: `${totals.resultMargin.toFixed(1)}% margin`,
       icon: TrendingUp,
       color: totals.resultAfterFinancial >= 0 ? "text-success" : "text-destructive",
     },
     {
-      title: "Growth Target",
+      title: "Tillväxtmål",
       value: budget.growthRate,
       icon: Percent,
       color: "text-warning",
@@ -69,13 +71,34 @@ export const BudgetMetrics = ({ budget, viewName, year }: BudgetMetricsProps) =>
 
   return (
     <div className="space-y-4">
-      {viewName && (
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-sm font-medium">
-            Aktiv vy: {viewName}
+      {/* Data type indicator */}
+      <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border bg-muted/30">
+        <div className="flex items-center gap-3">
+          <Badge variant="default" className="text-sm font-medium bg-primary">
+            Budget {displayYear}
           </Badge>
+          {viewName && (
+            <Badge variant="outline" className="text-sm font-medium">
+              {viewName}
+            </Badge>
+          )}
         </div>
-      )}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-help">
+                <Info className="h-3.5 w-3.5" />
+                <span>Visar budgeterade värden</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Dessa siffror är budgeterade värden för {displayYear}.</p>
+              <p className="text-muted-foreground">Jämför med utfall i tabellerna nedan.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+      
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {metrics.map((metric) => {
           const content = (

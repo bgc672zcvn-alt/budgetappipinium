@@ -846,7 +846,7 @@ export const BudgetDashboard = () => {
             {/* Business Areas (only for Ipinium) */}
             {budget.businessAreas && (
               <>
-                <BusinessAreaCards businessAreas={budget.businessAreas} />
+                <BusinessAreaCards businessAreas={budget.businessAreas} budgetYear={selectedYear} />
                 <BusinessAreasTable
                   businessAreas={budget.businessAreas}
                   onUpdate={handleBusinessAreasUpdate}
