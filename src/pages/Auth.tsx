@@ -102,7 +102,7 @@ const Auth = () => {
       emailSchema.parse(email);
       passwordSchema.parse(password);
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -114,10 +114,16 @@ const Auth = () => {
             description: "Kontrollera din e-post och lösenord.",
             variant: "destructive",
           });
+        } else if (error.message.includes("fetch")) {
+          toast({
+            title: "Nätverksfel",
+            description: "Kunde inte ansluta till servern. Försök igen om en stund.",
+            variant: "destructive",
+          });
         } else {
           throw error;
         }
-      } else {
+      } else if (data.session) {
         toast({
           title: "Inloggad!",
           description: "Välkommen tillbaka.",
@@ -132,9 +138,10 @@ const Auth = () => {
           variant: "destructive",
         });
       } else {
+        const errorMessage = error instanceof Error ? error.message : "Ett oväntat fel uppstod";
         toast({
           title: "Fel vid inloggning",
-          description: error instanceof Error ? error.message : "Ett oväntat fel uppstod",
+          description: errorMessage.includes("fetch") ? "Nätverksfel - försök igen" : errorMessage,
           variant: "destructive",
         });
       }
