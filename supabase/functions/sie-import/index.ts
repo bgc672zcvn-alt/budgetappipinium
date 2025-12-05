@@ -22,6 +22,16 @@ interface MonthlyData {
   financial_costs: number;
 }
 
+interface ImportOptions {
+  company: string;
+  sieContent: string;
+  saveAsHistorical?: boolean;
+  copyToBudget?: boolean;
+  targetBudgetYear?: number;
+  overwriteRevenue?: boolean;
+  overwriteCosts?: boolean;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -44,8 +54,19 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { company, sieContent } = await req.json();
+    const options: ImportOptions = await req.json();
+    const { 
+      company, 
+      sieContent,
+      saveAsHistorical = true,
+      copyToBudget = false,
+      targetBudgetYear,
+      overwriteRevenue = true,
+      overwriteCosts = true,
+    } = options;
+
     console.log(`[sie-import] Starting import for company: ${company}`);
+    console.log(`[sie-import] Options: saveAsHistorical=${saveAsHistorical}, copyToBudget=${copyToBudget}, targetYear=${targetBudgetYear}, overwriteRevenue=${overwriteRevenue}, overwriteCosts=${overwriteCosts}`);
 
     // Parse SIE content
     const lines = sieContent.split('\n');
@@ -55,8 +76,6 @@ Deno.serve(async (req) => {
     for (let i = 0; i < lines.length; i++) {
       const trimmed = lines[i].trim();
       
-      // Extract date from #VER (voucher header)
-      // Format: #VER "A" "1" 20240115 "Text" or #VER A 1 20240115
       if (trimmed.startsWith('#VER')) {
         const dateMatch = trimmed.match(/(\d{8})/);
         if (dateMatch) {
@@ -65,26 +84,20 @@ Deno.serve(async (req) => {
         }
       }
       
-      // Parse transactions from #TRANS (transaction lines)
-      // Format: #TRANS account {} amount [transdate] ["text"]
       if (trimmed.startsWith('#TRANS')) {
-        // Remove quotes and split by whitespace
         const cleaned = trimmed.replace(/"/g, '');
         const parts = cleaned.split(/\s+/);
         
         if (parts.length >= 4) {
           const account = parts[1];
-          // Amount can be at different positions, look for number with optional minus and comma/dot
           let amount = 0;
           let transDate = currentVoucherDate;
           
-          // Find amount (negative or positive number with comma or dot)
           for (let j = 2; j < parts.length; j++) {
             const part = parts[j];
             if (/^-?\d+([.,]\d+)?$/.test(part)) {
               amount = parseFloat(part.replace(',', '.'));
               
-              // Check if next part is a date (8 digits)
               if (j + 1 < parts.length && /^\d{8}$/.test(parts[j + 1])) {
                 const d = parts[j + 1];
                 transDate = `${d.substring(0, 4)}-${d.substring(4, 6)}-${d.substring(6, 8)}`;
@@ -101,30 +114,14 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[sie-import] Parsed ${transactions.length} transactions`);
-    
-    // Log sample transactions for debugging - include revenue and COGS accounts
-    const sampleRevenue = transactions.filter(t => {
-      const acc = parseInt(t.account);
-      return acc >= 3000 && acc <= 3999;
-    }).slice(0, 5);
-    const sampleCOGS = transactions.filter(t => {
-      const acc = parseInt(t.account);
-      return acc >= 4000 && acc <= 4999;
-    }).slice(0, 5);
-    
-    console.log('[sie-import] Sample revenue (3xxx) transactions:', sampleRevenue);
-    console.log('[sie-import] Sample COGS (4xxx) transactions:', sampleCOGS);
 
     // Group transactions by month and categorize
     const monthlyDataMap: Record<string, MonthlyData> = {};
 
     for (const trans of transactions) {
-      if (!trans.date || trans.date.length < 7) {
-        console.log('[sie-import] Skipping transaction without valid date:', trans);
-        continue;
-      }
+      if (!trans.date || trans.date.length < 7) continue;
       
-      const month = trans.date.substring(0, 7); // YYYY-MM
+      const month = trans.date.substring(0, 7);
       if (!monthlyDataMap[month]) {
         monthlyDataMap[month] = {
           revenue: 0,
@@ -139,35 +136,23 @@ Deno.serve(async (req) => {
       }
 
       const accountNum = parseInt(trans.account);
-      const amount = trans.amount; // Keep original sign from SIE file
+      const amount = trans.amount;
 
-      // Map accounts to categories (Swedish BAS account plan)
-      // In SIE: Revenue (3xxx) is normally negative (credit), Expenses are positive (debit)
       if (accountNum >= 3000 && accountNum <= 3999) {
-        // Revenue accounts (3xxx) - negative in SIE means income, so we negate to get positive revenue
         monthlyDataMap[month].revenue -= amount;
       } else if (accountNum >= 4000 && accountNum <= 4999) {
-        // Cost of goods sold (4xxx) - positive (debit) means expense
         monthlyDataMap[month].cogs += amount;
       } else if (accountNum >= 7000 && accountNum <= 7699) {
-        // Personnel costs (70xx-76xx) - positive (debit) means expense
         monthlyDataMap[month].personnel += amount;
       } else if (accountNum >= 5900 && accountNum <= 5999) {
-        // Marketing and advertising (59xx) - positive (debit) means expense
         monthlyDataMap[month].marketing += amount;
       } else if (accountNum >= 5000 && accountNum <= 5899) {
-        // Office, premises, etc (50xx-58xx) - positive (debit) means expense
         monthlyDataMap[month].office += amount;
       } else if (accountNum >= 6000 && accountNum <= 6999) {
-        // Other external costs (60xx-69xx) - positive (debit) means expense
         monthlyDataMap[month].other_opex += amount;
       } else if (accountNum >= 7700 && accountNum <= 7899) {
-        // Depreciation (77xx-78xx) - positive (debit) means expense
         monthlyDataMap[month].other_opex += amount;
       } else if (accountNum >= 8000 && accountNum <= 8999) {
-        // Financial income and expenses (80xx-89xx)
-        // In budget, financial costs are stored as negative numbers (subtracted from EBIT)
-        // So we negate the amount: expenses (positive debit) become negative, income (negative credit) becomes positive
         monthlyDataMap[month].financial_costs -= amount;
       }
     }
@@ -180,43 +165,161 @@ Deno.serve(async (req) => {
 
     console.log(`[sie-import] Aggregated data for ${Object.keys(monthlyDataMap).length} months`);
 
-    // Insert data into database
-    let monthsImported = 0;
-    for (const [month, data] of Object.entries(monthlyDataMap)) {
-      const [year, monthNum] = month.split('-').map(Number);
-      
-      const { error: upsertError } = await supabaseClient
-        .from('fortnox_historical_data')
-        .upsert({
-          company,
-          year,
-          month: monthNum,
+    let historicalMonthsImported = 0;
+    let budgetUpdated = false;
+
+    // Save as historical data if requested
+    if (saveAsHistorical) {
+      for (const [month, data] of Object.entries(monthlyDataMap)) {
+        const [year, monthNum] = month.split('-').map(Number);
+        
+        const { error: upsertError } = await supabaseClient
+          .from('fortnox_historical_data')
+          .upsert({
+            company,
+            year,
+            month: monthNum,
+            revenue: data.revenue,
+            cogs: data.cogs,
+            gross_profit: data.gross_profit,
+            personnel: data.personnel,
+            marketing: data.marketing,
+            office: data.office,
+            other_opex: data.other_opex,
+            financial_costs: data.financial_costs,
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'company,year,month',
+          });
+
+        if (upsertError) {
+          console.error(`Error upserting historical month ${month}:`, upsertError);
+        } else {
+          historicalMonthsImported++;
+        }
+      }
+      console.log(`[sie-import] Saved ${historicalMonthsImported} months as historical data`);
+    }
+
+    // Copy to budget if requested
+    if (copyToBudget && targetBudgetYear) {
+      console.log(`[sie-import] Copying to budget for year ${targetBudgetYear}`);
+
+      // Get existing budget data for the target year
+      const { data: existingBudget } = await supabaseClient
+        .from('budget_data')
+        .select('*')
+        .eq('company', company)
+        .eq('year', targetBudgetYear)
+        .maybeSingle();
+
+      // Build monthly budget data from SIE
+      const monthNames = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+      const sieMonthlyBudget: Record<string, Record<string, number>> = {};
+
+      for (const [month, data] of Object.entries(monthlyDataMap)) {
+        const monthNum = parseInt(month.split('-')[1]);
+        const monthKey = monthNames[monthNum - 1];
+        
+        sieMonthlyBudget[monthKey] = {
           revenue: data.revenue,
           cogs: data.cogs,
-          gross_profit: data.gross_profit,
+          grossProfit: data.gross_profit,
           personnel: data.personnel,
           marketing: data.marketing,
           office: data.office,
-          other_opex: data.other_opex,
-          financial_costs: data.financial_costs,
+          otherOpex: data.other_opex,
+          financialCosts: data.financial_costs,
+        };
+      }
+
+      // Build the new budget data
+      let newBudgetData: Record<string, unknown> = {};
+
+      if (existingBudget?.data) {
+        // Start with existing data
+        newBudgetData = existingBudget.data as Record<string, unknown>;
+      }
+
+      // Ensure monthly structure exists
+      if (!newBudgetData.monthly) {
+        newBudgetData.monthly = {};
+      }
+
+      const monthly = newBudgetData.monthly as Record<string, Record<string, number>>;
+
+      // Apply SIE data based on overwrite options
+      for (const monthKey of monthNames) {
+        if (!monthly[monthKey]) {
+          monthly[monthKey] = {
+            revenue: 0,
+            cogs: 0,
+            grossProfit: 0,
+            personnel: 0,
+            marketing: 0,
+            office: 0,
+            otherOpex: 0,
+            depreciation: 0,
+            financialCosts: 0,
+            ebit: 0,
+            ebitPercent: 0,
+            resultAfterFinancial: 0,
+          };
+        }
+
+        const sieData = sieMonthlyBudget[monthKey];
+        if (sieData) {
+          if (overwriteRevenue) {
+            monthly[monthKey].revenue = sieData.revenue;
+            monthly[monthKey].cogs = sieData.cogs;
+            monthly[monthKey].grossProfit = sieData.grossProfit;
+          }
+
+          if (overwriteCosts) {
+            monthly[monthKey].personnel = sieData.personnel;
+            monthly[monthKey].marketing = sieData.marketing;
+            monthly[monthKey].office = sieData.office;
+            monthly[monthKey].otherOpex = sieData.otherOpex;
+            monthly[monthKey].financialCosts = sieData.financialCosts;
+          }
+
+          // Recalculate derived fields
+          const m = monthly[monthKey];
+          const totalOpex = (m.personnel || 0) + (m.marketing || 0) + (m.office || 0) + (m.otherOpex || 0) + (m.depreciation || 0);
+          m.ebit = (m.grossProfit || 0) - totalOpex;
+          m.ebitPercent = m.revenue > 0 ? (m.ebit / m.revenue) * 100 : 0;
+          m.resultAfterFinancial = m.ebit - (m.financialCosts || 0);
+        }
+      }
+
+      newBudgetData.monthly = monthly;
+
+      // Upsert budget
+      const { error: budgetError } = await supabaseClient
+        .from('budget_data')
+        .upsert({
+          company,
+          year: targetBudgetYear,
+          data: newBudgetData,
           updated_at: new Date().toISOString(),
         }, {
-          onConflict: 'company,year,month',
+          onConflict: 'company,year',
         });
 
-      if (upsertError) {
-        console.error(`Error upserting month ${month}:`, upsertError);
+      if (budgetError) {
+        console.error(`Error upserting budget:`, budgetError);
+        throw new Error(`Kunde inte spara budget: ${budgetError.message}`);
       } else {
-        monthsImported++;
+        budgetUpdated = true;
+        console.log(`[sie-import] Budget updated for year ${targetBudgetYear}`);
       }
     }
-
-    console.log(`[sie-import] Successfully imported ${monthsImported} months`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        monthsImported,
+        historicalMonthsImported,
+        budgetUpdated,
         transactionsParsed: transactions.length,
       }),
       { 
