@@ -183,7 +183,7 @@ export const BudgetExport = ({ ipiniumData, onepanData, combinedData, year }: Bu
   const exportToExcel = () => {
     const wb = XLSX.utils.book_new();
 
-    const createCompanySheet = (budgetData: BudgetData, sheetName: string) => {
+    const createSummarySheet = (budgetData: BudgetData, sheetName: string) => {
       const summaryData: any[][] = [
         ['Budget', budgetData.company, year],
         [],
@@ -241,16 +241,255 @@ export const BudgetExport = ({ ipiniumData, onepanData, combinedData, year }: Bu
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
     };
 
-    // Create sheets for all three views
-    createCompanySheet(ipiniumData, 'Ipinium AB');
-    createCompanySheet(onepanData, 'OnePan');
-    createCompanySheet(combinedData, 'Koncern');
+    // Create detailed revenue sheet with business areas and accounts
+    const createRevenueDetailSheet = (budgetData: BudgetData, sheetName: string) => {
+      const data: any[][] = [
+        [`Intäkter - Detaljerad kontonivå - ${budgetData.company} - Budget ${year}`],
+        [],
+        ['Affärsområde', 'Konto', 'Kontonamn', ...months, 'Totalt'],
+      ];
 
-    XLSX.writeFile(wb, `Budgetrapport_${year}.xlsx`);
+      if (budgetData.businessAreas && budgetData.businessAreas.length > 0) {
+        budgetData.businessAreas.forEach((area) => {
+          // Add business area header row with totals
+          const areaTotals = area.monthlyData.map(m => m.revenue);
+          const areaTotal = areaTotals.reduce((sum, v) => sum + v, 0);
+          data.push([area.name, '', '', ...areaTotals, areaTotal]);
+
+          // Add account-level details if available
+          if (area.accounts && area.accounts.length > 0) {
+            area.accounts.forEach((account) => {
+              const monthlyAmounts = account.monthlyData.map(m => m.amount);
+              const accountTotal = monthlyAmounts.reduce((sum, v) => sum + v, 0);
+              data.push([
+                '',
+                account.accountNumber || '',
+                account.name,
+                ...monthlyAmounts,
+                accountTotal
+              ]);
+            });
+          }
+
+          // Add empty row between business areas
+          data.push([]);
+        });
+
+        // Add grand total row
+        const grandTotals = months.map((_, monthIndex) => {
+          return budgetData.businessAreas!.reduce((sum, area) => {
+            const monthData = area.monthlyData[monthIndex];
+            return sum + (monthData ? monthData.revenue : 0);
+          }, 0);
+        });
+        const grandTotal = grandTotals.reduce((sum, v) => sum + v, 0);
+        data.push(['TOTALT INTÄKTER', '', '', ...grandTotals, grandTotal]);
+      } else {
+        // Fallback to monthly data if no business areas
+        const monthlyRevenues = budgetData.monthlyData.map(m => m.revenue);
+        const totalRevenue = monthlyRevenues.reduce((sum, v) => sum + v, 0);
+        data.push(['Intäkter', '', '', ...monthlyRevenues, totalRevenue]);
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(data);
+
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 25 }, // Affärsområde
+        { wch: 10 }, // Konto
+        { wch: 30 }, // Kontonamn
+        ...months.map(() => ({ wch: 12 })), // Months
+        { wch: 14 }, // Totalt
+      ];
+
+      // Format currency for all numeric cells
+      const numRows = data.length;
+      for (let row = 3; row < numRows; row++) {
+        for (let col = 3; col <= 15; col++) {
+          const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
+          if (ws[cellRef] && typeof ws[cellRef].v === 'number') {
+            ws[cellRef].z = '#,##0';
+          }
+        }
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    };
+
+    // Create detailed costs sheet with categories and accounts
+    const createCostsDetailSheet = (budgetData: BudgetData, sheetName: string) => {
+      const data: any[][] = [
+        [`Kostnader - Detaljerad kontonivå - ${budgetData.company} - Budget ${year}`],
+        [],
+        ['Kostnadskategori', 'Konto', 'Kontonamn', ...months, 'Totalt'],
+      ];
+
+      if (budgetData.costCategories && budgetData.costCategories.length > 0) {
+        budgetData.costCategories.forEach((category) => {
+          // Calculate category totals
+          const categoryMonthTotals = months.map((_, monthIndex) => {
+            return category.accounts.reduce((sum, account) => {
+              const monthData = account.monthlyData[monthIndex];
+              return sum + (monthData ? monthData.amount : 0);
+            }, 0);
+          });
+          const categoryTotal = categoryMonthTotals.reduce((sum, v) => sum + v, 0);
+
+          // Add category header row
+          data.push([category.name, '', '', ...categoryMonthTotals, categoryTotal]);
+
+          // Add account-level details
+          category.accounts.forEach((account) => {
+            const monthlyAmounts = account.monthlyData.map(m => m.amount);
+            const accountTotal = monthlyAmounts.reduce((sum, v) => sum + v, 0);
+            data.push([
+              '',
+              account.accountNumber || '',
+              account.name,
+              ...monthlyAmounts,
+              accountTotal
+            ]);
+          });
+
+          // Add empty row between categories
+          data.push([]);
+        });
+
+        // Add grand total row
+        const grandTotals = months.map((_, monthIndex) => {
+          return budgetData.costCategories!.reduce((sum, category) => {
+            return sum + category.accounts.reduce((accSum, account) => {
+              const monthData = account.monthlyData[monthIndex];
+              return accSum + (monthData ? monthData.amount : 0);
+            }, 0);
+          }, 0);
+        });
+        const grandTotal = grandTotals.reduce((sum, v) => sum + v, 0);
+        data.push(['TOTALT KOSTNADER', '', '', ...grandTotals, grandTotal]);
+      } else {
+        // Fallback to summary costs from monthly data
+        const costRows = [
+          { name: 'Kostnad sålda varor', key: 'cogs' as const },
+          { name: 'Personal', key: 'personnel' as const },
+          { name: 'Marknadsföring', key: 'marketing' as const },
+          { name: 'Lokaler & Administration', key: 'office' as const },
+          { name: 'Övriga rörelsekostnader', key: 'otherOpex' as const },
+          { name: 'Avskrivningar', key: 'depreciation' as const },
+          { name: 'Finansiella kostnader', key: 'financialCosts' as const },
+        ];
+
+        costRows.forEach(({ name, key }) => {
+          const monthlyCosts = budgetData.monthlyData.map(m => m[key]);
+          const totalCost = monthlyCosts.reduce((sum, v) => sum + v, 0);
+          data.push([name, '', '', ...monthlyCosts, totalCost]);
+        });
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(data);
+
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 25 }, // Kostnadskategori
+        { wch: 10 }, // Konto
+        { wch: 30 }, // Kontonamn
+        ...months.map(() => ({ wch: 12 })), // Months
+        { wch: 14 }, // Totalt
+      ];
+
+      // Format currency for all numeric cells
+      const numRows = data.length;
+      for (let row = 3; row < numRows; row++) {
+        for (let col = 3; col <= 15; col++) {
+          const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
+          if (ws[cellRef] && typeof ws[cellRef].v === 'number') {
+            ws[cellRef].z = '#,##0';
+          }
+        }
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    };
+
+    // Create detailed monthly P&L sheet
+    const createMonthlyPLSheet = (budgetData: BudgetData, sheetName: string) => {
+      const data: any[][] = [
+        [`Månadsvis Resultaträkning - ${budgetData.company} - Budget ${year}`],
+        [],
+        ['Post', ...months, 'Totalt'],
+      ];
+
+      const rows = [
+        { name: 'Intäkter', key: 'revenue' as const },
+        { name: 'Kostnad sålda varor', key: 'cogs' as const },
+        { name: 'Bruttovinst', key: 'grossProfit' as const },
+        { name: '', key: null },
+        { name: 'Personal', key: 'personnel' as const },
+        { name: 'Marknadsföring', key: 'marketing' as const },
+        { name: 'Lokaler & Administration', key: 'office' as const },
+        { name: 'Övriga rörelsekostnader', key: 'otherOpex' as const },
+        { name: 'Summa Rörelsekostnader', key: 'totalOpex' as const },
+        { name: '', key: null },
+        { name: 'Avskrivningar', key: 'depreciation' as const },
+        { name: 'EBIT', key: 'ebit' as const },
+        { name: '', key: null },
+        { name: 'Finansiella kostnader', key: 'financialCosts' as const },
+        { name: 'Resultat efter finansiella poster', key: 'resultAfterFinancial' as const },
+      ];
+
+      rows.forEach(({ name, key }) => {
+        if (key === null) {
+          data.push([name, ...months.map(() => ''), '']);
+        } else {
+          const monthlyValues = budgetData.monthlyData.map(m => m[key]);
+          const total = monthlyValues.reduce((sum, v) => sum + v, 0);
+          data.push([name, ...monthlyValues, total]);
+        }
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(data);
+
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 35 }, // Post
+        ...months.map(() => ({ wch: 12 })), // Months
+        { wch: 14 }, // Totalt
+      ];
+
+      // Format currency for all numeric cells
+      const numRows = data.length;
+      for (let row = 3; row < numRows; row++) {
+        for (let col = 1; col <= 13; col++) {
+          const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
+          if (ws[cellRef] && typeof ws[cellRef].v === 'number') {
+            ws[cellRef].z = '#,##0';
+          }
+        }
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    };
+
+    // Create all sheets for Ipinium
+    createSummarySheet(ipiniumData, 'Ipinium - Sammanfattning');
+    createRevenueDetailSheet(ipiniumData, 'Ipinium - Intäkter');
+    createCostsDetailSheet(ipiniumData, 'Ipinium - Kostnader');
+    createMonthlyPLSheet(ipiniumData, 'Ipinium - Månadsvis');
+
+    // Create all sheets for OnePan
+    createSummarySheet(onepanData, 'OnePan - Sammanfattning');
+    createRevenueDetailSheet(onepanData, 'OnePan - Intäkter');
+    createCostsDetailSheet(onepanData, 'OnePan - Kostnader');
+    createMonthlyPLSheet(onepanData, 'OnePan - Månadsvis');
+
+    // Create summary sheets for Koncern
+    createSummarySheet(combinedData, 'Koncern - Sammanfattning');
+    createMonthlyPLSheet(combinedData, 'Koncern - Månadsvis');
+
+    XLSX.writeFile(wb, `Budgetrapport_Detaljerad_${year}.xlsx`);
     
     toast({
       title: "Excel exporterad",
-      description: "Budgetrapporten har exporterats som Excel",
+      description: "Detaljerad budgetrapport med kontonivå har exporterats",
     });
   };
 
